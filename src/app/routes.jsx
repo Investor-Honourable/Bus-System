@@ -51,9 +51,10 @@ export const router = createBrowserRouter([
     path: "/help-support",
     element: <HelpSupport />,
   },
+  // Passenger routes
   {
     path: "/tickets",
-    element: <ProtectedRoute />,
+    element: <ProtectedRoute allowedRoles={["passenger", "admin", "super_admin"]} />,
     children: [
       {
         path: "",
@@ -64,12 +65,14 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // Main dashboard with role-based children
   {
     path: "/dashboard",
     element: <ProtectedRoute />,
     children: [
+      // Passenger dashboard
       {
-        path: "/dashboard",
+        path: "",
         element: <Layout />,
         children: [
           { index: true, element: <Dashboard /> },
@@ -80,32 +83,46 @@ export const router = createBrowserRouter([
           { path: "history", element: <History /> },
         ],
       },
+      // Admin dashboard
       {
         path: "admin",
-        element: <AdminLayout />,
+        element: <ProtectedRoute allowedRoles={["admin", "super_admin"]} />,
         children: [
-          { index: true, element: <AdminDashboard /> },
-          { path: "users", element: <Users /> },
-          { path: "buses", element: <Buses /> },
-          { path: "drivers", element: <Drivers /> },
-          { path: "routes", element: <Routes /> },
-          { path: "trips", element: <Trips /> },
-          { path: "bookings", element: <AdminBookings /> },
-          { path: "reports", element: <Reports /> },
+          {
+            path: "",
+            element: <AdminLayout />,
+            children: [
+              { index: true, element: <AdminDashboard /> },
+              { path: "users", element: <Users /> },
+              { path: "buses", element: <Buses /> },
+              { path: "drivers", element: <Drivers /> },
+              { path: "routes", element: <Routes /> },
+              { path: "trips", element: <Trips /> },
+              { path: "bookings", element: <AdminBookings /> },
+              { path: "reports", element: <Reports /> },
+            ],
+          },
         ],
       },
+      // Driver dashboard
       {
         path: "driver",
-        element: <DriverLayout />,
+        element: <ProtectedRoute allowedRoles={["driver"]} />,
         children: [
-          { index: true, element: <DriverDashboard /> },
-          { path: "trips", element: <DriverTrips /> },
-          { path: "trips/:id", element: <DriverTripDetails /> },
-          { path: "passengers", element: <DriverPassengers /> },
-          { path: "scan", element: <DriverScanTicket /> },
-          { path: "notifications", element: <DriverNotifications /> },
-          { path: "profile", element: <DriverProfile /> },
-          { path: "settings", element: <DriverSettings /> },
+          {
+            path: "",
+            element: <DriverLayout />,
+            children: [
+              { index: true, element: <DriverDashboard /> },
+              { path: "trips", element: <DriverTrips /> },
+              { path: "trips/:id", element: <DriverTripDetails /> },
+              { path: "passengers", element: <DriverPassengers /> },
+              { path: "scan", element: <DriverScanTicket /> },
+              { path: "notifications", element: <DriverNotifications /> },
+              { path: "profile", element: <DriverProfile /> },
+              { path: "settings", element: <DriverSettings /> },
+            ],
+          },
         ],
       },
     ],

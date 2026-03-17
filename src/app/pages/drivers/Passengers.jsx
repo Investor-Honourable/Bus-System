@@ -10,6 +10,7 @@ export default function TripPassengers() {
   const [isLoading, setIsLoading] = useState(true);
   const [passengersLoading, setPassengersLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchTrips();
@@ -44,15 +45,22 @@ export default function TripPassengers() {
   const fetchPassengers = async (tripId) => {
     setPassengersLoading(true);
     try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
       const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/trip_passengers.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trip_id: tripId })
+        body: JSON.stringify({ trip_id: tripId, driver_id: user.id })
       });
       const data = await response.json();
       
       if (data.status === "success") {
         setPassengers(data.data || []);
+        setError("");
+      } else {
+        console.error("Error fetching passengers:", data.message);
+        setError(data.message || "Failed to load passengers");
+        setPassengers([]);
       }
     } catch (error) {
       console.error("Error fetching passengers:", error);

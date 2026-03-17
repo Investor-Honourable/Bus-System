@@ -62,22 +62,92 @@ export default function DriverNotifications() {
     }
   };
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  const markAsRead = async (id) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
+      await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          driver_id: user.id,
+          notification_id: id,
+          action: "mark_read"
+        })
+      });
+      
+      setNotifications(notifications.map(n => 
+        n.id === id ? { ...n, read: true } : n
+      ));
+    } catch (error) {
+      console.error("Error marking as read:", error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
+      // Mark each as read
+      for (const n of notifications) {
+        await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            driver_id: user.id,
+            notification_id: n.id,
+            action: "mark_read"
+          })
+        });
+      }
+      
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+    }
   };
 
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const deleteNotification = async (id) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
+      await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          driver_id: user.id,
+          notification_id: id
+        })
+      });
+      
+      setNotifications(notifications.filter(n => n.id !== id));
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
+  const clearAll = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
+      // Delete each notification
+      for (const n of notifications) {
+        if (typeof n.id === 'number') {
+          await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              driver_id: user.id,
+              notification_id: n.id
+            })
+          });
+        }
+      }
+      
+      setNotifications([]);
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+    }
   };
 
   const filteredNotifications = notifications.filter(n => {

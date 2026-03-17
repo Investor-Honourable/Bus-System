@@ -21,12 +21,24 @@ export default function ScanTicket() {
     setSearchResult(null);
 
     try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
       // Search for booking by ticket code
       const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/verify_ticket.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ booking_ref: ticketCode.trim() })
+        body: JSON.stringify({ 
+          booking_ref: ticketCode.trim(),
+          driver_id: user.id
+        })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || "Error: " + response.status);
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.status === "success" && data.data) {
@@ -34,6 +46,7 @@ export default function ScanTicket() {
         const ticket = data.data;
         setSearchResult({
           booking_ref: ticket.booking_ref,
+          ticket_ref: ticket.ticket_ref,
           user_name: ticket.user_name,
           user_email: ticket.user_email,
           user_phone: ticket.user_phone,
@@ -43,16 +56,19 @@ export default function ScanTicket() {
           departure_time: ticket.departure_time,
           bus_number: ticket.bus_number,
           number_of_seats: ticket.number_of_seats,
+          seat_number: ticket.seat_number,
           booking_status: ticket.booking_status,
+          ticket_status: ticket.ticket_status,
           is_valid: ticket.is_valid,
-          trip_status: ticket.trip_status
+          trip_status: ticket.trip_status,
+          validation_message: ticket.validation_message
         });
       } else {
         setError(data.message || "Ticket not found. Please check the code and try again.");
       }
     } catch (err) {
       console.error("Error searching ticket:", err);
-      setError("Failed to search ticket. Please try again.");
+      setError("Failed to search ticket: " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +100,7 @@ export default function ScanTicket() {
             <div className="flex-1">
               <Input
                 type="text"
-                placeholder="Enter ticket code (e.g., BK000001)"
+                placeholder="Enter ticket code (e.g., BK000001 or CT69B...)"
                 value={ticketCode}
                 onChange={(e) => setTicketCode(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -165,7 +181,16 @@ export default function ScanTicket() {
                 <div className="bg-white p-4 rounded-lg border">
                   <p className="text-sm text-gray-500">Booking Reference</p>
                   <p className="font-mono font-medium text-lg">{searchResult.booking_ref}</p>
+                  {searchResult.ticket_ref && searchResult.ticket_ref !== searchResult.booking_ref && (
+                    <>
+                      <p className="text-sm text-gray-500 mt-2">Ticket Reference</p>
+                      <p className="font-mono text-sm">{searchResult.ticket_ref}</p>
+                    </>
+                  )}
                   <p className="text-sm text-gray-500 mt-2">Seats: {searchResult.number_of_seats || 1}</p>
+                  {searchResult.seat_number && (
+                    <p className="text-sm text-gray-500">Seat: {searchResult.seat_number}</p>
+                  )}
                   <p className="text-sm text-gray-500">Status: 
                     <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
                       searchResult.booking_status === 'confirmed' ? 'bg-green-100 text-green-600' : 
@@ -203,9 +228,9 @@ export default function ScanTicket() {
                   <p className={`text-sm mt-1 ${
                     searchResult.is_valid ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {searchResult.is_valid 
+                    {searchResult.validation_message || (searchResult.is_valid 
                       ? `This ticket is valid for the trip from ${searchResult.origin} to ${searchResult.destination}`
-                      : 'This ticket cannot be used for the current trip'
+                      : 'This ticket cannot be used for the current trip')
                     }
                   </p>
                 </div>
@@ -223,7 +248,7 @@ export default function ScanTicket() {
         <CardContent>
           <ol className="list-decimal list-inside space-y-2 text-gray-600">
             <li>Ask the passenger for their ticket code or booking reference</li>
-            <li>Enter the code in the search box above (e.g., BK000001)</li>
+            <li>Enter the code in the search box above (e.g., BK000001 or CT69B0333EE6C2C)</li>
             <li>Click "Verify" to check if the ticket is valid</li>
             <li>Confirm the passenger details match the booking</li>
           </ol>

@@ -24,13 +24,13 @@ $stmt->bind_param("si", $new_role, $user_id);
 if($stmt->execute()){
 
     // 2️⃣ Insert into drivers table
-    // Set route_id and bus_id as NULL for now
-    $stmt2 = $conn->prepare("
-        INSERT INTO drivers (user_id, route_id, bus_id, name, email)
-        SELECT id, NULL, NULL, name, email
-        FROM users
-        WHERE id = ?
-    ");
+    // Use correct column names: assigned_route_id, assigned_bus_id
+    $stmt2 = $conn->prepare(
+        "INSERT INTO drivers (user_id, assigned_route_id, assigned_bus_id, status, rating, total_trips) 
+         SELECT id, NULL, NULL, 'active', 5.00, 0 
+         FROM users WHERE id = ?
+         ON DUPLICATE KEY UPDATE status = 'active'"
+    );
     $stmt2->bind_param("i", $user_id);
     $stmt2->execute();
 

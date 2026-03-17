@@ -35,7 +35,7 @@ export function Bookings() {
       const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       const userId = currentUser.id || 0;
 
-      const response = await fetch("http://localhost/Bus_system/api/index.php", {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get_bookings", user_id: userId }),

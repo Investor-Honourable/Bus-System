@@ -20,6 +20,7 @@ export default defineConfig({
   // Proxy API requests to PHP backend
   server: {
     port: 5173,
+    host: true, // Allow access from other devices on the network
     proxy: {
       '/api': {
         target: 'http://localhost:80',

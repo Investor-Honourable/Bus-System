@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@figma/my-make-file",
+  "name": "bus-management-system",
   "private": true,
   "version": "0.0.1",
   "description": "Bus booking system application",

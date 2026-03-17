@@ -80,8 +80,17 @@ export function Login() {
           localStorage.setItem("busfare_remember", "true");
         }
 
+        // Role-based redirect
+        const userRole = data.user.role?.toLowerCase();
+        let redirectPath = "/dashboard";
+        if (userRole === "admin" || userRole === "super_admin") {
+          redirectPath = "/dashboard/admin";
+        } else if (userRole === "driver") {
+          redirectPath = "/dashboard/driver";
+        }
+        
         setIsLoading(false);
-        navigate("/dashboard");
+        navigate(redirectPath);
       } else {
         // Handle specific error messages
         const errorMessage = data.message || "Login failed. Please try again.";

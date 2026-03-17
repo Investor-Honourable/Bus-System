@@ -54,10 +54,16 @@ export default function TripDetails() {
   const updateTripStatus = async (newStatus) => {
     setUpdating(true);
     try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
       const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/update_trip_status.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trip_id: id, status: newStatus })
+        body: JSON.stringify({ 
+          trip_id: id, 
+          status: newStatus,
+          driver_id: user.id
+        })
       });
       const data = await response.json();
       

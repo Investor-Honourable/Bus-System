@@ -16,7 +16,7 @@ export function Routes() {
 
   const fetchRoutes = async () => {
     try {
-      const response = await fetch("http://localhost/Bus_system/api/index.php", {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get_routes" }),

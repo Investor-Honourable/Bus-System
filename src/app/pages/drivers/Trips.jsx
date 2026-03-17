@@ -39,10 +39,16 @@ export default function DriverTrips() {
   const updateTripStatus = async (tripId, newStatus) => {
     setUpdating(tripId);
     try {
+      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+      
       const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/update_trip_status.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trip_id: tripId, status: newStatus })
+        body: JSON.stringify({ 
+          trip_id: tripId, 
+          status: newStatus,
+          driver_id: user.id
+        })
       });
       const data = await response.json();
       
@@ -90,9 +96,12 @@ export default function DriverTrips() {
   };
 
   // Filter trips
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + 
+    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(today.getDate()).padStart(2, '0');
   const filteredTrips = trips.filter(trip => {
-    if (filter === "today") return trip.departure_date === today;
+    if (filter === "today") return trip.departure_date === todayStr;
     if (filter === "upcoming") return trip.status === "scheduled" || trip.status === "confirmed" || trip.status === "in-progress" || trip.status === "ongoing";
     if (filter === "completed") return trip.status === "completed";
     return true;

@@ -35,8 +35,12 @@ export default function DriverDashboard() {
       if (data.status === "success") {
         const trips = data.data || [];
         
-        const today = new Date().toISOString().split("T")[0];
-        const todayTripsList = trips.filter(t => t.departure_date === today);
+        // Use local date instead of UTC
+        const today = new Date();
+        const todayStr = today.getFullYear() + '-' + 
+          String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(today.getDate()).padStart(2, '0');
+        const todayTripsList = trips.filter(t => t.departure_date === todayStr);
         
         // Sort by departure time to find next trip
         const sortedTrips = [...todayTripsList].sort((a, b) => 

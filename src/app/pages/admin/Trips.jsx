@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Plus, Search, Edit, Trash2, Users, Eye, XCircle, Clock, MapPin, Bus } from "lucide-react";
+import { Calendar, Plus, Search, Edit, Trash2, Users, Eye, XCircle, Clock, MapPin, Bus, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Input } from "../../components/ui/input.jsx";
@@ -32,6 +32,9 @@ export function Trips() {
   const [isPassengersDialogOpen, setIsPassengersDialogOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [tripPassengers, setTripPassengers] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [isAssignDriverDialogOpen, setIsAssignDriverDialogOpen] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState("");
   const [newSchedule, setNewSchedule] = useState({
     route_id: "",
     bus_id: "",
@@ -252,6 +255,50 @@ export function Trips() {
     setIsPassengersDialogOpen(true);
   };
 
+  const fetchDrivers = async () => {
+    try {
+      const response = await fetch("/api/dashboards/admin/assign_driver.php");
+      const data = await response.json();
+      if (data.data) {
+        setDrivers(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching drivers:", error);
+    }
+  };
+
+  const openAssignDriverDialog = async (trip) => {
+    setSelectedTrip(trip);
+    await fetchDrivers();
+    setIsAssignDriverDialogOpen(true);
+  };
+
+  const assignDriver = async () => {
+    if (!selectedTrip || !selectedDriver) return;
+    try {
+      const tripId = selectedTrip.trip_id || selectedTrip.schedule_id;
+      const response = await fetch("/api/dashboards/admin/assign_driver.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          driver_id: selectedDriver, 
+          trip_id: tripId 
+        }),
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        setIsAssignDriverDialogOpen(false);
+        setSelectedDriver("");
+        fetchData();
+      } else {
+        alert(data.message || "Failed to assign driver");
+      }
+    } catch (error) {
+      console.error("Error assigning driver:", error);
+      alert("Failed to assign driver");
+    }
+  };
+
   const openEditDialog = (trip) => {
     setSelectedTrip({ ...trip });
     setIsEditDialogOpen(true);
@@ -406,6 +453,15 @@ export function Trips() {
                           title="View Passengers"
                         >
                           <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-green-600"
+                          onClick={() => openAssignDriverDialog(trip)}
+                          title="Assign Driver"
+                        >
+                          <UserPlus className="w-4 h-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -694,6 +750,46 @@ export function Trips() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPassengersDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Driver Dialog */}
+      <Dialog open={isAssignDriverDialogOpen} onOpenChange={setIsAssignDriverDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Driver to Trip</DialogTitle>
+          </DialogHeader>
+          {selectedTrip && (
+            <div className="space-y-4 py-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">Trip</p>
+                <p className="font-medium">{selectedTrip.start_point} → {selectedTrip.end_point}</p>
+                <p className="text-sm text-gray-500">{selectedTrip.date} at {selectedTrip.departure_time}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Select Driver</Label>
+                <Select
+                  value={selectedDriver}
+                  onValueChange={setSelectedDriver}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a driver" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {drivers.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.name} {driver.license_number ? `(${driver.license_number})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignDriverDialogOpen(false)}>Cancel</Button>
+            <Button onClick={assignDriver} disabled={!selectedDriver}>Assign Driver</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

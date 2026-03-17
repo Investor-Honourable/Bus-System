@@ -7,6 +7,7 @@ import { Label } from "../../components/ui/label.jsx";
 
 export default function DriverProfile() {
   const [driverData, setDriverData] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -261,9 +262,9 @@ export default function DriverProfile() {
                     onClick={() => {
                       setIsEditing(false);
                       setFormData({
-                        name: currentUser.name || "",
-                        email: currentUser.email || "",
-                        phone: currentUser.phone || "",
+                        name: driverData?.name || currentUser?.name || "",
+                        email: driverData?.email || currentUser?.email || "",
+                        phone: driverData?.phone || currentUser?.phone || "",
                       });
                     }}
                   >

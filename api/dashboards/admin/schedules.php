@@ -16,6 +16,29 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 if ($method === "GET") {
   // Get trips from the trips table (used by passengers)
+  // Check if driver_id column exists in trips table
+  $hasDriverId = $conn->query("SHOW COLUMNS FROM trips LIKE 'driver_id'")->num_rows > 0;
+  
+  $driverSelect = "";
+  $driverJoin = "";
+  
+  if ($hasDriverId) {
+    $driverSelect = "t.driver_id,";
+    // Check if assignments table exists
+    $assignmentsTableExists = $conn->query("SHOW TABLES LIKE 'driver_trip_assignments'")->num_rows > 0;
+    
+    if ($assignmentsTableExists) {
+      $driverJoin = "
+      LEFT JOIN driver_trip_assignments dta ON dta.trip_id = t.id
+      LEFT JOIN users du ON du.id = dta.driver_id
+      ";
+    } else {
+      $driverJoin = "
+      LEFT JOIN users du ON du.id = t.driver_id
+      ";
+    }
+  }
+  
   $sql = "
   SELECT
     t.id AS trip_id,
@@ -27,15 +50,18 @@ if ($method === "GET") {
     t.status,
     t.route_id,
     t.bus_id,
+    " . $driverSelect . "
     r.origin,
     r.destination,
     b.bus_number,
     b.bus_name,
     b.bus_type,
-    b.total_seats
+    b.total_seats,
+    COALESCE(du.name, '') as assigned_driver
   FROM trips t
   JOIN routes r ON r.id = t.route_id
   JOIN buses b ON b.id = t.bus_id
+    " . $driverJoin . "
   ORDER BY t.departure_date DESC, t.departure_time DESC
   ";
 

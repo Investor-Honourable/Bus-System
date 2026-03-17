@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { Download, Printer, QrCode, MapPin, Calendar, Clock, User, Ticket } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card.jsx";
 import { Badge } from "../components/ui/badge.jsx";
@@ -7,6 +8,7 @@ import { Button } from "../components/ui/button.jsx";
 export function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTickets();
@@ -19,7 +21,7 @@ export function Tickets() {
 
       // First, try to fix any missing tickets for this user
       try {
-        await fetch("http://localhost/Bus_system/api/index.php", {
+        await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "fix_tickets", user_id: userId }),
@@ -28,7 +30,7 @@ export function Tickets() {
         console.log("Fix tickets not available, continuing anyway");
       }
 
-      const response = await fetch("http://localhost/Bus_system/api/index.php", {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get_tickets", user_id: userId }),
@@ -208,7 +210,12 @@ export function Tickets() {
             <Ticket className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Tickets Found</h3>
             <p className="text-gray-600 mb-4">You haven't booked any tickets yet</p>
-            <Button className="bg-blue-600 hover:bg-blue-700">Book Your First Trip</Button>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => navigate("/dashboard/discover")}
+            >
+              Book Your First Trip
+            </Button>
           </CardContent>
         </Card>
       )}

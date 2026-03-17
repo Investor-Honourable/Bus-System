@@ -30,7 +30,7 @@ export function History() {
 
       // Fix any missing tickets first
       try {
-        await fetch("http://localhost/Bus_system/api/index.php", {
+        await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "fix_tickets", user_id: userId }),
@@ -39,7 +39,7 @@ export function History() {
         // Continue anyway
       }
 
-      const response = await fetch("http://localhost/Bus_system/api/index.php", {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get_bookings", user_id: userId }),

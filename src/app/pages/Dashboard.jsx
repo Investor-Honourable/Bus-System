@@ -68,7 +68,7 @@ export function Dashboard() {
       const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       const userId = currentUser.id || 0;
       
-      const response = await fetch("http://localhost/Bus_system/api/index.php", {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "auto_setup", user_id: userId }),
@@ -96,7 +96,7 @@ export function Dashboard() {
       // Fetch stats
       let statsData = { status: 'error', stats: null };
       try {
-        const statsResponse = await fetch("http://localhost/Bus_system/api/index.php", {
+        const statsResponse = await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "get_stats", user_id: userId }),
@@ -143,7 +143,7 @@ export function Dashboard() {
       // Fetch bookings
       let bookingsData = { status: 'error', bookings: [] };
       try {
-        const bookingsResponse = await fetch("http://localhost/Bus_system/api/index.php", {
+        const bookingsResponse = await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "get_bookings", user_id: userId }),
@@ -229,7 +229,7 @@ export function Dashboard() {
       // Always fetch routes for popular routes section
       let routesData = { status: 'error', routes: [] };
       try {
-        const routesRes = await fetch("http://localhost/Bus_system/api/index.php", {
+        const routesRes = await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "get_routes" })
@@ -290,7 +290,7 @@ export function Dashboard() {
       const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       const userId = currentUser.id || 0;
 
-      const response = await fetch("http://localhost/Bus_system/api/index.php", {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "cancel_booking", user_id: userId, booking_id: bookingId }),
