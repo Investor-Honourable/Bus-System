@@ -2,17 +2,32 @@
 session_start();
 require '../config/db.php';
 
-// Enable CORS for React
-header("Access-Control-Allow-Origin: http://localhost:5173");
+// CORS Configuration
+$allowed_origins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowed_origin = in_array($origin, $allowed_origins) ? $origin : $allowed_origins[0];
+
+header("Access-Control-Allow-Origin: $allowed_origin");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
 
-// Turn off error display
-error_reporting(0);
-ini_set('display_errors', 0);
+// Disable error display in production
+$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', 'localhost']) || 
+                strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+if (!$is_localhost) {
+    ini_set('display_errors', 0);
+    error_reporting(0);
+}
 
 // Get JSON input
 $data = json_decode(file_get_contents("php://input"), true);
@@ -23,7 +38,10 @@ $email = $data['email'] ?? '';
 $phone = $data['phone'] ?? null;
 $gender = $data['gender'] ?? null;
 $password = $data['password'] ?? '';
-$role = $data['role'] ?? 'passenger'; // Get role from request, default to passenger
+
+// SECURITY FIX: Role is always set to 'passenger' - never accept role from user input
+// Only admin users can assign roles through the admin panel
+$role = 'passenger';
 
 // Validate required fields
 if (!$name || !$email || !$password) {
@@ -34,10 +52,7 @@ if (!$name || !$email || !$password) {
     exit;
 }
 
-// Validate role
-if (!in_array($role, ['passenger', 'driver', 'admin'])) {
-    $role = 'passenger'; // Default to passenger if invalid role
-}
+// SECURITY FIX: Removed role validation based on user input - role is hardcoded to 'passenger'
 
 // Check if email already exists
 $stmtCheck = $conn->prepare("SELECT id FROM users WHERE email = ?");

@@ -256,12 +256,12 @@ export function Bookings() {
                 {filteredBookings.length > 0 ? (
                   filteredBookings.map((booking) => (
                     <tr key={booking.booking_id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">#{booking.booking_id}</td>
+                      <td className="py-3 px-4 whitespace-nowrap">#{booking.booking_id}</td>
                       <td className="py-3 px-4">{booking.passenger_name}</td>
                       <td className="py-3 px-4">{booking.origin} → {booking.destination}</td>
-                      <td className="py-3 px-4">{booking.departure_date}</td>
-                      <td className="py-3 px-4">{booking.number_of_seats}</td>
-                      <td className="py-3 px-4">{booking.tickets?.map(t => t.seat_number).join(', ') || "-"}</td>
+                      <td className="py-3 px-4 whitespace-nowrap">{booking.departure_date}</td>
+                      <td className="py-3 px-4 text-center">{booking.number_of_seats}</td>
+                      <td className="py-3 px-4 whitespace-nowrap">{booking.tickets?.map(t => t.seat_number).join(', ') || "-"}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(booking.booking_status)}`}>
                           {booking.booking_status}

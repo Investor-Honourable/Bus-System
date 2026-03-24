@@ -25,7 +25,7 @@ export default function DriverDashboard() {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
       // Fetch trips assigned to this driver
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/my_trips.php", {
+      const response = await fetch("/api/dashboards/drivers/my_trips.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ driver_id: user.id })

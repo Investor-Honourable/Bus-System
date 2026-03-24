@@ -132,16 +132,37 @@ export function Trips() {
       });
       
       console.log("Response status:", response.status);
+      console.log("Response headers:", [...response.headers.entries()]);
       
-      // Check if response is OK
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("API Error:", errorData);
-        alert(`Failed to create trip: ${response.status} - ${errorData.error || 'Server error'}${errorData.details ? ' - ' + errorData.details : ''}`);
+      // Get response text first to see what we're getting
+      const responseText = await response.text();
+      console.log("Response text:", responseText);
+      
+      // Handle empty response
+      if (!responseText || responseText.trim() === "") {
+        alert(`Server error: Empty response (${response.status}). The server may be overloaded or not responding.`);
+        console.error("Empty response from server");
         return;
       }
       
-      const data = await response.json();
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        // Server returned non-JSON response (likely HTML error)
+        alert(`Server error: Invalid response (${response.status}). Check console for details.`);
+        console.error("Non-JSON response:", responseText);
+        return;
+      }
+      
+      // Check if response is OK
+      if (!response.ok || data.error) {
+        console.error("API Error:", data);
+        alert(`Failed to create trip: ${response.status} - ${data.error || 'Server error'}${data.details ? ' - ' + data.details : ''}`);
+        return;
+      }
+      
       console.log("Response data:", data);
       
       if (data.message || data.success) {
@@ -170,6 +191,17 @@ export function Trips() {
       let errorMessage = "Failed to create trip. ";
       if (error.name === "TypeError" && error.message.includes("Failed to fetch")) {
         errorMessage += "Could not connect to server. Make sure XAMPP Apache is running.";
+      } else if (response && !response.ok) {
+        // Server responded with error status
+        try {
+          const errorData = await response.json();
+          errorMessage += `Server error: ${errorData.error || response.status}`;
+          if (errorData.details) {
+            errorMessage += ` - ${errorData.details}`;
+          }
+        } catch (e) {
+          errorMessage += `HTTP ${response.status}: ${response.statusText}`;
+        }
       } else if (error.message.includes("not valid JSON")) {
         // The server returned HTML instead of JSON - likely a PHP error
         errorMessage += "Server returned an error. Please check the browser console network tab for details.";

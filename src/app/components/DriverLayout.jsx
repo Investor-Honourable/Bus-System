@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { 
   LayoutDashboard, 
   Bus, 
@@ -28,6 +29,7 @@ import {
 import { useState, useEffect } from "react";
 
 export function DriverLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -49,13 +51,13 @@ export function DriverLayout() {
   };
 
   const navItems = [
-    { to: "/dashboard/driver", icon: LayoutDashboard, label: "Dashboard", end: true },
-    { to: "/dashboard/driver/trips", icon: Bus, label: "My Trips", end: false },
-    { to: "/dashboard/driver/passengers", icon: Users, label: "Passengers", end: false },
-    { to: "/dashboard/driver/scan", icon: QrCode, label: "Scan Ticket", end: false },
-    { to: "/dashboard/driver/notifications", icon: Bell, label: "Notifications", end: false },
-    { to: "/dashboard/driver/profile", icon: User, label: "Profile", end: false },
-    { to: "/dashboard/driver/settings", icon: Settings, label: "Settings", end: false },
+    { to: "/dashboard/driver", icon: LayoutDashboard, label: t('driver.dashboard'), end: true },
+    { to: "/dashboard/driver/trips", icon: Bus, label: t('driver.trips'), end: false },
+    { to: "/dashboard/driver/passengers", icon: Users, label: t('driver.passengers'), end: false },
+    { to: "/dashboard/driver/scan", icon: QrCode, label: t('driver.scanTicket'), end: false },
+    { to: "/dashboard/driver/notifications", icon: Bell, label: t('driver.notifications'), end: false },
+    { to: "/dashboard/driver/profile", icon: User, label: t('driver.profile'), end: false },
+    { to: "/dashboard/driver/settings", icon: Settings, label: t('nav.settings'), end: false },
   ];
 
   // Mobile sidebar content
@@ -68,7 +70,7 @@ export function DriverLayout() {
             alt="CamTransit Logo" 
             className="w-8 h-8 object-contain"
           />
-          <span className="text-xl font-bold text-gray-900">CamTransit</span>
+          <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
         </div>
         
         <nav className="space-y-1">

@@ -37,9 +37,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../components/ui/dialog.jsx";
+import { useTranslation } from "../../i18n/LanguageContext.jsx";
 
 // API base URL
-const API_URL = "http://localhost/Bus_system/api";
+const API_URL = "/api";
 
 // Get user from localStorage
 const getStoredUser = () => {
@@ -48,6 +49,7 @@ const getStoredUser = () => {
 };
 
 export function Settings() {
+  const { t, language, changeLanguage, languages: availableLanguages } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [isLoading, setIsLoading] = useState(true);
@@ -312,23 +314,12 @@ export function Settings() {
     }
   };
 
-  // Language handler
+  // Language handler - use translation context
   const handleLanguageChange = async (lang) => {
     setSettings(prev => ({ ...prev, language: lang }));
     
-    try {
-      await fetch(`${API_URL}/settings.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          action: "update_language",
-          language: lang
-        })
-      });
-    } catch (err) {
-      console.error("Failed to update language");
-    }
+    // Use the translation context to change language and persist
+    await changeLanguage(lang);
   };
 
   // Payment handlers
@@ -1120,53 +1111,36 @@ export function Settings() {
             {/* Language Settings */}
             {activeTab === "language" && (
               <div className="bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Language Settings</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">{t('settings.language')}</h2>
                 
                 <div className="space-y-4">
                   <p className="text-gray-600 mb-4">
-                    Select your preferred language for the application interface.
+                    {t('settings.selectLanguage')}
                   </p>
                   
                   <div className="grid md:grid-cols-2 gap-4">
-                    <button
-                      onClick={() => handleLanguageChange("en")}
-                      className={`flex items-center justify-between p-6 rounded-xl border-2 transition-all ${
-                        settings.language === "en" 
-                          ? "border-blue-500 bg-blue-50" 
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">🇬🇧</span>
-                        <div className="text-left">
-                          <p className="font-medium text-gray-800">English</p>
-                          <p className="text-sm text-gray-500">English (UK/US)</p>
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => handleLanguageChange(lang.code)}
+                        className={`flex items-center justify-between p-6 rounded-xl border-2 transition-all ${
+                          settings.language === lang.code 
+                            ? "border-blue-500 bg-blue-50" 
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className="text-3xl">{lang.flag}</span>
+                          <div className="text-left">
+                            <p className="font-medium text-gray-800">{lang.nativeName}</p>
+                            <p className="text-sm text-gray-500">{lang.name}</p>
+                          </div>
                         </div>
-                      </div>
-                      {settings.language === "en" && (
-                        <Check className="w-6 h-6 text-blue-600" />
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => handleLanguageChange("fr")}
-                      className={`flex items-center justify-between p-6 rounded-xl border-2 transition-all ${
-                        settings.language === "fr" 
-                          ? "border-blue-500 bg-blue-50" 
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">🇫🇷</span>
-                        <div className="text-left">
-                          <p className="font-medium text-gray-800">Français</p>
-                          <p className="text-sm text-gray-500">French (Cameroon)</p>
-                        </div>
-                      </div>
-                      {settings.language === "fr" && (
-                        <Check className="w-6 h-6 text-blue-600" />
-                      )}
-                    </button>
+                        {settings.language === lang.code && (
+                          <Check className="w-6 h-6 text-blue-600" />
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

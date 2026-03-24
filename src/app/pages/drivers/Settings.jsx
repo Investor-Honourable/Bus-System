@@ -49,7 +49,7 @@ export default function DriverSettings() {
       
       try {
         const response = await fetch(
-          `http://localhost/Bus_system/api/dashboards/drivers/settings.php?user_id=${currentUser.id}`
+          `/api/dashboards/drivers/settings.php?user_id=${currentUser.id}`
         );
         const data = await response.json();
         
@@ -85,7 +85,7 @@ export default function DriverSettings() {
     setIsSavingSettings(true);
     
     try {
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/settings.php", {
+      const response = await fetch("/api/dashboards/drivers/settings.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -188,7 +188,7 @@ export default function DriverSettings() {
       const user = localStorage.getItem("busfare_current_user");
       const userData = user ? JSON.parse(user) : {};
       
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/change_password.php", {
+      const response = await fetch("/api/dashboards/drivers/change_password.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { Download, Printer, QrCode, MapPin, Calendar, Clock, User, Ticket } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card.jsx";
 import { Badge } from "../components/ui/badge.jsx";
 import { Button } from "../components/ui/button.jsx";
 
 export function Tickets() {
+  const { t } = useTranslation();
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -83,8 +85,8 @@ export function Tickets() {
     <div className="p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">My Tickets</h1>
-        <p className="text-gray-600 mt-1">View and manage your bus tickets</p>
+        <h1 className="text-3xl font-bold text-gray-900">{t('nav.tickets')}</h1>
+        <p className="text-gray-600 mt-1">{t('passenger.ticketDetails')}</p>
       </div>
 
       {/* Tickets Grid */}
@@ -119,7 +121,7 @@ export function Tickets() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
                       <MapPin className="w-4 h-4 text-green-600" />
-                      <span>From</span>
+                      <span>{t('common.from')}</span>
                     </div>
                     <p className="font-semibold text-gray-900">{ticket.routeFrom}</p>
                     <p className="text-2xl font-bold text-blue-600 mt-1">
@@ -133,7 +135,7 @@ export function Tickets() {
                   </div>
                   <div className="flex-1 text-right">
                     <div className="flex items-center justify-end gap-2 text-sm text-gray-500 mb-1">
-                      <span>To</span>
+                      <span>{t('common.to')}</span>
                       <MapPin className="w-4 h-4 text-red-600" />
                     </div>
                     <p className="font-semibold text-gray-900">{ticket.routeTo}</p>
@@ -147,18 +149,18 @@ export function Tickets() {
               {/* Ticket Details */}
               <div className="grid grid-cols-3 gap-4 py-4 border-t border-b border-gray-200 mb-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Date</p>
+                  <p className="text-xs text-gray-500 mb-1">{t('common.date')}</p>
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-gray-400" />
                     <p className="text-sm font-medium text-gray-900">{ticket.departureDate}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Bus Number</p>
+                  <p className="text-xs text-gray-500 mb-1">{t('bus.busNumber')}</p>
                   <p className="text-sm font-medium text-gray-900">{ticket.busNumber}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Seat</p>
+                  <p className="text-xs text-gray-500 mb-1">{t('booking.seatSelection')}</p>
                   <p className="text-sm font-medium text-gray-900">{ticket.seatNumber}</p>
                 </div>
               </div>
@@ -170,12 +172,12 @@ export function Tickets() {
                     <QrCode className="w-10 h-10 text-gray-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Scan to validate</p>
-                    <p className="text-sm font-medium text-gray-900">Mobile ticket</p>
+                    <p className="text-xs text-gray-500">{t('tickets.scanToValidate')}</p>
+                    <p className="text-sm font-medium text-gray-900">{t('tickets.mobileTicket')}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">Total Amount</p>
+                  <p className="text-xs text-gray-500">{t('common.total')}</p>
                   <p className="text-2xl font-bold text-gray-900">{ticket.price}</p>
                 </div>
               </div>
@@ -184,18 +186,18 @@ export function Tickets() {
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1 gap-2">
                   <Download className="w-4 h-4" />
-                  Download
+                  {t('common.download')}
                 </Button>
                 <Button variant="outline" className="flex-1 gap-2">
                   <Printer className="w-4 h-4" />
-                  Print
+                  {t('common.print')}
                 </Button>
               </div>
 
               {/* Booking Info */}
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <p className="text-xs text-gray-500">
-                  Booked on {ticket.bookingDate}
+                  {t('tickets.bookedOn')} {ticket.bookingDate}
                 </p>
               </div>
             </CardContent>
@@ -208,13 +210,13 @@ export function Tickets() {
         <Card>
           <CardContent className="py-12 text-center">
             <Ticket className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Tickets Found</h3>
-            <p className="text-gray-600 mb-4">You haven't booked any tickets yet</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('tickets.noTicketsFound')}</h3>
+            <p className="text-gray-600 mb-4">{t('tickets.noTicketsDescription')}</p>
             <Button 
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => navigate("/dashboard/discover")}
             >
-              Book Your First Trip
+              {t('passenger.bookNow')}
             </Button>
           </CardContent>
         </Card>

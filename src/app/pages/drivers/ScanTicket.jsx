@@ -24,7 +24,7 @@ export default function ScanTicket() {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
       // Search for booking by ticket code
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/verify_ticket.php", {
+      const response = await fetch("/api/dashboards/drivers/verify_ticket.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -1,14 +1,34 @@
 <?php
 // Verify ticket API - accepts booking_reference, ticket_reference, or numeric ID
-error_reporting(0);
-ini_set('display_errors', 0);
+// Disable error display in production
+$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', 'localhost']) || 
+                strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+if (!$is_localhost) {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
 
 require_once("../../config/db.php");
 
+// CORS Configuration
+$allowed_origins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowed_origin = in_array($origin, $allowed_origins) ? $origin : $allowed_origins[0];
+
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Origin: $allowed_origin");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
 
@@ -50,7 +70,7 @@ if ($method === "GET" || $method === "POST") {
     exit;
   }
 
-  // Try to find booking by different methods
+  // Try to find booking by different methods using prepared statements
   $booking = null;
   $search_terms = [];
   
@@ -62,71 +82,96 @@ if ($method === "GET" || $method === "POST") {
     $search_terms[] = intval($booking_ref);
   }
   
-  // Try each search term
+  // Try each search term using prepared statements
   foreach ($search_terms as $term) {
     // Try ticket_reference first
-    $sql = "SELECT b.*, t.ticket_reference, t.seat_number, t.ticket_status 
+    $stmt = $conn->prepare("SELECT b.*, t.ticket_reference, t.seat_number, t.ticket_status 
             FROM bookings b 
             LEFT JOIN tickets t ON t.booking_id = b.id 
-            WHERE t.ticket_reference = '" . $conn->real_escape_string($term) . "'";
-    $result = $conn->query($sql);
+            WHERE t.ticket_reference = ?");
+    $stmt->bind_param("s", $term);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
     if (!$result || $result->num_rows === 0) {
+      $stmt->close();
       // Try booking_reference
-      $sql2 = "SELECT b.*, t.ticket_reference, t.seat_number, t.ticket_status 
+      $stmt2 = $conn->prepare("SELECT b.*, t.ticket_reference, t.seat_number, t.ticket_status 
                FROM bookings b 
                LEFT JOIN tickets t ON t.booking_id = b.id 
-               WHERE b.booking_reference = '" . $conn->real_escape_string($term) . "'";
-      $result2 = $conn->query($sql2);
+               WHERE b.booking_reference = ?");
+      $stmt2->bind_param("s", $term);
+      $stmt2->execute();
+      $result2 = $stmt2->get_result();
       
       if ($result2 && $result2->num_rows > 0) {
         $booking = $result2->fetch_assoc();
+        $stmt2->close();
         break;
       }
+      $stmt2->close();
     } else {
       $booking = $result->fetch_assoc();
+      $stmt->close();
       break;
     }
   }
   
   // If not found, try by numeric ID
   if (!$booking && is_numeric($booking_ref)) {
-    $sql3 = "SELECT b.*, t.ticket_reference, t.seat_number, t.ticket_status 
+    $numeric_id = intval($booking_ref);
+    $stmt3 = $conn->prepare("SELECT b.*, t.ticket_reference, t.seat_number, t.ticket_status 
              FROM bookings b 
              LEFT JOIN tickets t ON t.booking_id = b.id 
-             WHERE b.id = " . intval($booking_ref);
-    $result3 = $conn->query($sql3);
+             WHERE b.id = ?");
+    $stmt3->bind_param("i", $numeric_id);
+    $stmt3->execute();
+    $result3 = $stmt3->get_result();
     if ($result3 && $result3->num_rows > 0) {
       $booking = $result3->fetch_assoc();
     }
+    $stmt3->close();
   }
   
   if (!$booking) {
-    echo json_encode(["status" => "error", "message" => "Booking not found with reference: " . $booking_ref]);
+    echo json_encode(["status" => "error", "message" => "Booking not found with reference: " . htmlspecialchars($booking_ref)]);
     exit;
   }
   
-  // Get trip details
-  $trip_sql = "SELECT tr.*, r.origin, r.destination, b.bus_number 
+  // Get trip details using prepared statement
+  $trip_id = intval($booking['trip_id']);
+  $trip_stmt = $conn->prepare("SELECT tr.*, r.origin, r.destination, b.bus_number 
                FROM trips tr 
                JOIN routes r ON r.id = tr.route_id 
                JOIN buses b ON b.id = tr.bus_id 
-               WHERE tr.id = " . intval($booking['trip_id']);
-  $trip_result = $conn->query($trip_sql);
+               WHERE tr.id = ?");
+  $trip_stmt->bind_param("i", $trip_id);
+  $trip_stmt->execute();
+  $trip_result = $trip_stmt->get_result();
   $trip = $trip_result->fetch_assoc();
+  $trip_stmt->close();
   
-  // Check if driver is assigned to this trip
+  // Check if driver is assigned to this trip using prepared statement
   $is_driver_assigned = false;
   if ($driver_id > 0) {
-    $assign_sql = "SELECT id FROM driver_trip_assignments WHERE driver_id = " . intval($driver_id) . " AND trip_id = " . intval($booking['trip_id']) . " AND status = 'active'";
-    $assign_result = $conn->query($assign_sql);
+    $driver_id_val = intval($driver_id);
+    $trip_id_val = intval($booking['trip_id']);
+    $assign_stmt = $conn->prepare("SELECT id FROM driver_trip_assignments WHERE driver_id = ? AND trip_id = ? AND status = 'active'");
+    $assign_stmt->bind_param("ii", $driver_id_val, $trip_id_val);
+    $assign_stmt->execute();
+    $assign_result = $assign_stmt->get_result();
     $is_driver_assigned = ($assign_result && $assign_result->num_rows > 0);
+    $assign_stmt->close();
   }
   
-  // Get user details
-  $user_sql = "SELECT name, email, phone FROM users WHERE id = " . intval($booking['user_id']);
-  $user_result = $conn->query($user_sql);
+  // Get user details using prepared statement
+  $user_id_val = intval($booking['user_id']);
+  $user_stmt = $conn->prepare("SELECT name, email, phone FROM users WHERE id = ?");
+  $user_stmt->bind_param("i", $user_id_val);
+  $user_stmt->execute();
+  $user_result = $user_stmt->get_result();
   $user = $user_result->fetch_assoc();
+  $user_stmt->close();
   
   // Determine if ticket is valid
   $is_valid = false;

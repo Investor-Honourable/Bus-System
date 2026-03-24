@@ -7,10 +7,21 @@
 session_start();
 require 'config/db.php';
 
-// Enable CORS
-header("Access-Control-Allow-Origin: *");
+// CORS Configuration - Get allowed origin from request or use defaults
+$allowed_origins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowed_origin = in_array($origin, $allowed_origins) ? $origin : $allowed_origins[0];
+
+header("Access-Control-Allow-Origin: $allowed_origin");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, User-ID");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, User-ID");
+header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
 // Handle preflight
@@ -19,8 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Disable error display in production (enable only for local development)
+$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', 'localhost']) || 
+                strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+if (!$is_localhost) {
+    ini_set('display_errors', 0);
+    error_reporting(0);
+}
 
 // ============ NOTIFICATION HELPER FUNCTIONS ============
 

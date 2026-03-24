@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const API_URL = 'http://localhost/Bus_system/api/notifications.php';
+const API_URL = '/api/notifications.php';
 
 export function useNotifications(userId) {
   const [notifications, setNotifications] = useState([]);

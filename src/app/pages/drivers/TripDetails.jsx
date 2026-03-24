@@ -21,7 +21,7 @@ export default function TripDetails() {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
       // Fetch trip details
-      const tripsResponse = await fetch("http://localhost/Bus_system/api/dashboards/drivers/my_trips.php", {
+      const tripsResponse = await fetch("/api/dashboards/drivers/my_trips.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ driver_id: user.id })
@@ -34,7 +34,7 @@ export default function TripDetails() {
       }
       
       // Fetch passengers
-      const passengersResponse = await fetch("http://localhost/Bus_system/api/dashboards/drivers/trip_passengers.php", {
+      const passengersResponse = await fetch("/api/dashboards/drivers/trip_passengers.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trip_id: id })
@@ -56,7 +56,7 @@ export default function TripDetails() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/update_trip_status.php", {
+      const response = await fetch("/api/dashboards/drivers/update_trip_status.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

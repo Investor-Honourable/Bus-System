@@ -31,7 +31,7 @@ export default function DriverProfile() {
         setCurrentUser(userData);
         
         // Fetch driver profile from API
-        const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/profile.php", {
+        const response = await fetch("/api/dashboards/drivers/profile.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userData.id, action: "view" })
@@ -77,7 +77,7 @@ export default function DriverProfile() {
       const userData = user ? JSON.parse(user) : {};
       
       // Call API to update profile
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/profile.php", {
+      const response = await fetch("/api/dashboards/drivers/profile.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { Mail, Lock, Bus, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Bus, Eye, EyeOff, Globe } from "lucide-react";
 import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
 import { Label } from "../components/ui/label.jsx";
 import { Checkbox } from "../components/ui/checkbox.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu.jsx";
 
 export function Login() {
+  const { t, language, changeLanguage, languages: availableLanguages, currentLanguage } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
@@ -129,6 +137,33 @@ export function Login() {
       {/* Login Card */}
       <div className="relative z-10 w-full max-w-md mx-3 sm:mx-4">
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-8">
+          {/* Language Selector - Top Right */}
+          <div className="flex justify-end mb-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                  <span className="text-lg">{currentLanguage.flag}</span>
+                  <span className="hidden sm:inline">{currentLanguage.nativeName}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {availableLanguages.map((lang) => (
+                  <DropdownMenuItem 
+                    key={lang.code}
+                    onClick={() => changeLanguage(lang.code)}
+                    className={`flex items-center gap-2 ${language === lang.code ? 'bg-blue-50' : ''}`}
+                  >
+                    <span className="text-lg">{lang.flag}</span>
+                    <span>{lang.nativeName}</span>
+                    {language === lang.code && (
+                      <span className="ml-auto text-blue-600">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <img 
@@ -137,9 +172,9 @@ export function Login() {
               className="w-72 h-72 mx-auto -mb-20 object-contain"
             />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Welcome Back
+              {t('auth.loginTitle')}
             </h1>
-            <p className="text-gray-600 mt-2">Sign in to your CamTransit account</p>
+            <p className="text-gray-600 mt-2">{t('auth.loginSubtitle')}</p>
           </div>
 
           {/* Form */}
@@ -147,7 +182,7 @@ export function Login() {
             {/* Email Field */}
             <div>
               <Label htmlFor="email" className="text-gray-700">
-                Email Address
+                {t('auth.emailLabel')}
               </Label>
               <div className="relative mt-1">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -292,12 +327,12 @@ export function Login() {
 
           {/* Sign Up Link */}
           <p className="text-center mt-6 text-sm text-gray-600">
-            Don't have an account?{" "}
+            {t('auth.dontHaveAccount')}{" "}
             <Link
               to="/signup"
               className="font-semibold text-blue-600 hover:text-purple-600 transition-colors"
             >
-              Sign Up
+              {t('auth.signUp')}
             </Link>
           </p>
         </div>

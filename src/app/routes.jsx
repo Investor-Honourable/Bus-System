@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { Login } from "./pages/Login.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { ForgotPassword } from "./pages/ForgotPassword.jsx";
+import { ResetPassword } from "./pages/ResetPassword.jsx";
 import { HelpSupport } from "./pages/HelpSupport.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { Bookings } from "./pages/passengers/Bookings.jsx";
@@ -46,6 +47,10 @@ export const router = createBrowserRouter([
   {
     path: "/forgot-password",
     element: <ForgotPassword />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
   },
   {
     path: "/help-support",

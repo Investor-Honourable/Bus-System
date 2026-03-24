@@ -15,7 +15,8 @@ import {
   LogOut,
   Shield,
   Menu,
-  X
+  X,
+  Globe
 } from "lucide-react";
 import { Button } from "./ui/button.jsx";
 import { Input } from "./ui/input.jsx";
@@ -39,8 +40,10 @@ import {
 } from "./ui/sheet.jsx";
 import { useState, useEffect, useCallback } from "react";
 import { useIsMobile } from "./ui/use-mobile.js";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 
 export function Layout() {
+  const { t, language, changeLanguage, languages: availableLanguages, currentLanguage } = useTranslation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const isMobile = useIsMobile();
@@ -56,7 +59,7 @@ export function Layout() {
     if (!currentUser?.id) return;
     
     try {
-      const response = await fetch("http://localhost/Bus_system/api/notifications.php?action=list", {
+      const response = await fetch("/api/notifications.php?action=list", {
         headers: { 'User-ID': currentUser.id }
       });
       const data = await response.json();
@@ -75,7 +78,7 @@ export function Layout() {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await fetch("http://localhost/Bus_system/api/notifications.php?action=mark_read", {
+      await fetch("/api/notifications.php?action=mark_read", {
         method: 'PUT',
         headers: { 
           'User-ID': currentUser.id,
@@ -96,7 +99,7 @@ export function Layout() {
   // Mark all as read
   const markAllAsRead = async () => {
     try {
-      await fetch("http://localhost/Bus_system/api/notifications.php?action=mark_all_read", {
+      await fetch("/api/notifications.php?action=mark_all_read", {
         method: 'PUT',
         headers: { 
           'User-ID': currentUser.id,
@@ -148,11 +151,11 @@ export function Layout() {
   };
 
   const navItems = [
-    { to: "/dashboard", icon: LayoutDashboard, label: "Home", end: true },
-    { to: "/dashboard/discover", icon: Compass, label: "Book Trip", end: false },
-    { to: "/dashboard/tickets", icon: Ticket, label: "My Tickets", end: false },
-    { to: "/dashboard/bookings", icon: BookOpen, label: "My Bookings", end: false },
-    { to: "/dashboard/history", icon: History, label: "Trip History", end: false },
+    { to: "/dashboard", icon: LayoutDashboard, label: t('nav.home'), end: true },
+    { to: "/dashboard/discover", icon: Compass, label: t('nav.discover'), end: false },
+    { to: "/dashboard/tickets", icon: Ticket, label: t('nav.tickets'), end: false },
+    { to: "/dashboard/bookings", icon: BookOpen, label: t('nav.bookings'), end: false },
+    { to: "/dashboard/history", icon: History, label: t('nav.history'), end: false },
   ];
 
   // Add admin link if user is admin
@@ -175,7 +178,7 @@ export function Layout() {
             alt="CamTransit Logo" 
             className="w-8 h-8 object-contain"
           />
-          <span className="text-xl font-bold text-gray-900">CamTransit</span>
+          <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
         </div>
         
         <nav className="space-y-1">
@@ -253,7 +256,7 @@ export function Layout() {
                 alt="CamTransit Logo" 
                 className="w-8 h-8 object-contain"
               />
-              <span className="text-xl font-bold">CamTransit</span>
+              <span className="text-xl font-bold">{t('common.appName')}</span>
             </SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100%-60px)]">
@@ -280,7 +283,7 @@ export function Layout() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input 
-                  placeholder="Search trips, bookings..."
+                  placeholder={t('nav.search')}
                   className="pl-10 bg-gray-50 border-gray-200 text-sm h-10"
                 />
               </div>
@@ -309,13 +312,13 @@ export function Layout() {
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0" align="end">
                   <div className="p-4 border-b">
-                    <h3 className="font-semibold">Notifications</h3>
+                    <h3 className="font-semibold">{t('nav.notifications')}</h3>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {isLoadingNotifs ? (
-                      <div className="p-4 text-center text-gray-500">Loading...</div>
+                      <div className="p-4 text-center text-gray-500">{t('common.loading')}</div>
                     ) : notifications.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">No notifications</div>
+                      <div className="p-4 text-center text-gray-500">{t('messages.noResults')}</div>
                     ) : (
                       notifications.map((notification) => (
                         <div 
@@ -344,6 +347,34 @@ export function Layout() {
                   </div>
                 </PopoverContent>
               </Popover>
+
+              {/* Language Selector */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
+                    <span className="text-lg">{currentLanguage.flag}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">
+                    {t('settings.languagePreference')}
+                  </div>
+                  <DropdownMenuSeparator />
+                  {availableLanguages.map((lang) => (
+                    <DropdownMenuItem 
+                      key={lang.code}
+                      onClick={() => changeLanguage(lang.code)}
+                      className={`flex items-center gap-2 ${language === lang.code ? 'bg-blue-50' : ''}`}
+                    >
+                      <span className="text-lg">{lang.flag}</span>
+                      <span>{lang.nativeName}</span>
+                      {language === lang.code && (
+                        <span className="ml-auto text-blue-600">✓</span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               
               {/* User dropdown */}
               <div className="border-l border-gray-200 pl-2 sm:pl-3">

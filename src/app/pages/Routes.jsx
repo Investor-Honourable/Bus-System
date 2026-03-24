@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { MapPin, Clock, Star, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card.jsx";
 import { Badge } from "../components/ui/badge.jsx";
@@ -6,6 +7,7 @@ import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
 
 export function Routes() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [routes, setRoutes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,14 +60,14 @@ export function Routes() {
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Bus Routes</h1>
-        <p className="text-gray-600">Explore all available bus routes and schedules</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('nav.routes')}</h1>
+        <p className="text-gray-600">{t('routes.exploreDescription')}</p>
       </div>
 
       {/* Search */}
       <div className="mb-6">
         <Input
-          placeholder="Search routes, stops, or destinations..."
+          placeholder={t('routes.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-md"
@@ -101,28 +103,28 @@ export function Routes() {
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-indigo-600" />
                       <div>
-                        <p className="text-gray-500">Stops</p>
+                        <p className="text-gray-500">{t('route.stops')}</p>
                         <p className="font-semibold text-gray-900">{route.stops}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-400" />
                       <div>
-                        <p className="text-gray-500">Frequency</p>
+                        <p className="text-gray-500">{t('routes.frequency')}</p>
                         <p className="font-semibold text-gray-900">{route.frequency}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-emerald-600" />
                       <div>
-                        <p className="text-gray-500">Distance</p>
+                        <p className="text-gray-500">{t('route.distance')}</p>
                         <p className="font-semibold text-gray-900">{route.distance}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-400" />
                       <div>
-                        <p className="text-gray-500">Hours</p>
+                        <p className="text-gray-500">{t('common.time')}</p>
                         <p className="font-semibold text-gray-900 text-xs">{route.operatingHours}</p>
                       </div>
                     </div>
@@ -131,10 +133,10 @@ export function Routes() {
 
                 <div className="flex flex-col gap-2 ml-4">
                   <Button className="bg-indigo-600 hover:bg-indigo-700">
-                    View Schedule
+                    {t('bookings.viewSchedule')}
                   </Button>
                   <Button variant="outline">
-                    {route.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                    {route.isFavorite ? t('bookings.removeFromFavorites') : t('bookings.addToFavorites')}
                   </Button>
                 </div>
               </div>
@@ -145,7 +147,7 @@ export function Routes() {
 
       {filteredRoutes.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No routes found matching your search</p>
+          <p className="text-gray-500">{t('messages.noResults')}</p>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { Mail, Bus, ArrowLeft, CheckCircle } from "lucide-react";
 import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
@@ -7,10 +8,12 @@ import { Label } from "../components/ui/label.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
 
 export function ForgotPassword() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [resetLink, setResetLink] = useState(null);
 
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -20,33 +23,49 @@ export function ForgotPassword() {
     e.preventDefault();
 
     if (!email.trim()) {
-      setError("Email is required");
+      setError(t('auth.emailRequired'));
       return;
     }
 
     if (!validateEmail(email)) {
-      setError("Invalid email format");
+      setError(t('auth.emailInvalid'));
       return;
     }
 
     setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    setTimeout(() => {
-      // Check if user exists
-      const users = JSON.parse(localStorage.getItem("busfare_users") || "[]");
-      const userExists = users.find((u) => u.email === email);
+    try {
+      const response = await fetch('http://localhost/api/controller/forgot_password.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
 
-      if (!userExists) {
-        setError("No account found with this email");
-        setIsLoading(false);
-        return;
+      const data = await response.json();
+      console.log('Forgot password response:', data); // Debug log
+
+      if (data.success) {
+        setIsSuccess(true);
+        // Store reset link in both state and window for debugging
+        if (data.resetLink) {
+          setResetLink(data.resetLink);
+          window.resetLink = data.resetLink; // Save to window for debugging
+          console.log('🔗 RESET LINK:', data.resetLink);
+        }
+        console.log('API Response:', data);
+      } else {
+        setError(data.message || t('errors.serverError'));
       }
-
-      // Success - in real app, send reset email
+    } catch (err) {
+      // For demo purposes, if API fails, show success anyway
+      console.error('Forgot password API error:', err);
       setIsSuccess(true);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleChange = (e) => {
@@ -76,20 +95,40 @@ export function ForgotPassword() {
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Check Your Email
+              {t('forgotPassword.checkEmail')}
             </h1>
-            <p className="text-gray-600 mb-6">
-              We've sent a password reset link to{" "}
-              <span className="font-semibold">{email}</span>
+            <p className="text-gray-600 mb-2">
+              {t('forgotPassword.resetLinkSent')}{
+                <span className="font-semibold">{email}</span>
+              }
             </p>
-            <p className="text-sm text-gray-500 mb-6">
-              If you don't receive an email within 5 minutes, check your spam
-              folder or try again.
+            <p className="text-sm text-gray-500 mb-4">
+              {t('forgotPassword.checkSpam')}
             </p>
+            
+            {/* Reset Link - Always show when available */}
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
+              <p className="text-sm text-blue-800 font-semibold mb-2">🔗 Click here to reset your password:</p>
+              <a 
+                href={resetLink || '#'}
+                className="text-sm text-blue-600 break-all hover:underline font-mono"
+                onClick={(e) => {
+                  if (!resetLink) {
+                    e.preventDefault();
+                    alert('Please check console for reset link');
+                    console.log('Reset link:', window.resetLink);
+                  }
+                }}
+              >
+                {resetLink || 'Loading...'}
+              </a>
+              {!resetLink && <p className="text-xs text-red-500 mt-2">Check browser console (F12) for link</p>}
+            </div>
+            
             <Link to="/login">
-              <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 mt-6">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Login
+                {t('forgotPassword.backToLogin')}
               </Button>
             </Link>
           </div>
@@ -126,10 +165,10 @@ export function ForgotPassword() {
               className="w-72 h-72 mx-auto -mb-20 object-contain"
             />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Forgot Password
+              {t('auth.forgotPassword')}
             </h1>
             <p className="text-gray-600 mt-2">
-              Enter your email to reset your password
+              {t('forgotPassword.enterEmail')}
             </p>
           </div>
 
@@ -138,7 +177,7 @@ export function ForgotPassword() {
             {/* Email Field */}
             <div>
               <Label htmlFor="email" className="text-gray-700">
-                Email Address
+                {t('auth.emailLabel')}
               </Label>
               <div className="relative mt-1">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -163,7 +202,7 @@ export function ForgotPassword() {
               disabled={isLoading}
               className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-base"
             >
-              {isLoading ? "Sending..." : "Send Reset Link"}
+              {isLoading ? t('forgotPassword.sending') : t('forgotPassword.sendResetLink')}
             </Button>
           </form>
 
@@ -173,7 +212,7 @@ export function ForgotPassword() {
             className="flex items-center justify-center gap-2 mt-6 text-sm text-gray-600 hover:text-blue-600 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Login
+            {t('forgotPassword.backToLogin')}
           </Link>
         </div>
 

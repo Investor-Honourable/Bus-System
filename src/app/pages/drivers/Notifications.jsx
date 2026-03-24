@@ -17,7 +17,7 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      const response = await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+      const response = await fetch("/api/dashboards/drivers/notifications.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ driver_id: user.id })
@@ -66,7 +66,7 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+      await fetch("/api/dashboards/drivers/notifications.php", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -90,7 +90,7 @@ export default function DriverNotifications() {
       
       // Mark each as read
       for (const n of notifications) {
-        await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+        await fetch("/api/dashboards/drivers/notifications.php", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -111,7 +111,7 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+      await fetch("/api/dashboards/drivers/notifications.php", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -133,7 +133,7 @@ export default function DriverNotifications() {
       // Delete each notification
       for (const n of notifications) {
         if (typeof n.id === 'number') {
-          await fetch("http://localhost/Bus_system/api/dashboards/drivers/notifications.php", {
+          await fetch("/api/dashboards/drivers/notifications.php", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 

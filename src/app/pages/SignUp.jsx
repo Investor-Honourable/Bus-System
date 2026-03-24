@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { User, Mail, Lock, Bus } from "lucide-react";
 import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
@@ -7,6 +8,7 @@ import { Label } from "../components/ui/label.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
 
 export function SignUp() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
@@ -21,25 +23,25 @@ export function SignUp() {
     const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = t('auth.nameRequired');
     } else if (formData.name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+      newErrors.name = t('auth.nameMinLength');
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t('auth.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
+      newErrors.email = t('auth.emailInvalid');
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t('auth.passwordRequired');
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = t('auth.passwordMinLength');
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t('errors.passwordMismatch');
     }
 
     setErrors(newErrors);
@@ -69,7 +71,7 @@ export function SignUp() {
 
       // Check if response is ok
       if (!response.ok) {
-        setErrors({ email: "Server error. Please try again later." });
+        setErrors({ email: t('errors.serverError') });
         setIsLoading(false);
         return;
       }
@@ -90,14 +92,14 @@ export function SignUp() {
         navigate("/dashboard");
       } else {
         // Handle specific error messages
-        const errorMessage = data.message || "Registration failed. Please try again.";
+        const errorMessage = data.message || t('auth.signUpError');
         setErrors({ email: errorMessage });
         setIsLoading(false);
       }
     } catch (error) {
       console.error("Registration error:", error);
       // More helpful error message
-      setErrors({ email: "Unable to connect to server. Please check your internet connection and try again." });
+      setErrors({ email: t('errors.networkError') });
       setIsLoading(false);
     }
   };
@@ -134,9 +136,9 @@ export function SignUp() {
               className="w-72 h-72 mx-auto -mb-20 object-contain"
             />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Sign Up
+              {t('auth.signUp')}
             </h1>
-            <p className="text-gray-600 mt-2">Create your CamTransit account</p>
+            <p className="text-gray-600 mt-2">{t('auth.createAccount')}</p>
           </div>
 
           {/* Form */}
@@ -144,7 +146,7 @@ export function SignUp() {
             {/* Name Field */}
             <div>
               <Label htmlFor="name" className="text-gray-700">
-                Full Name
+                {t('auth.fullName')}
               </Label>
               <div className="relative mt-1">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -152,7 +154,7 @@ export function SignUp() {
                   id="name"
                   name="name"
                   type="text"
-                  placeholder="Enter your name"
+                  placeholder={t('auth.enterName')}
                   value={formData.name}
                   onChange={handleChange}
                   className={`pl-10 h-12 bg-gray-50 border-gray-200 ${
@@ -168,7 +170,7 @@ export function SignUp() {
             {/* Email Field */}
             <div>
               <Label htmlFor="email" className="text-gray-700">
-                Email Address
+                {t('auth.emailLabel')}
               </Label>
               <div className="relative mt-1">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -192,7 +194,7 @@ export function SignUp() {
             {/* Password Field */}
             <div>
               <Label htmlFor="password" className="text-gray-700">
-                Password
+                {t('auth.passwordLabel')}
               </Label>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -216,7 +218,7 @@ export function SignUp() {
             {/* Confirm Password Field */}
             <div>
               <Label htmlFor="confirmPassword" className="text-gray-700">
-                Confirm Password
+                {t('auth.confirmPassword')}
               </Label>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -245,18 +247,18 @@ export function SignUp() {
               disabled={isLoading}
               className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-base"
             >
-              {isLoading ? "Creating Account..." : "Sign Up"}
+              {isLoading ? t('auth.creatingAccount') : t('auth.signUp')}
             </Button>
           </form>
 
           {/* Login Link */}
           <p className="text-center mt-6 text-sm text-gray-600">
-            Already have an account?{" "}
+            {t('auth.alreadyHaveAccount')}{" "}
             <Link
               to="/login"
               className="font-semibold text-blue-600 hover:text-purple-600 transition-colors"
             >
-              Login
+              {t('auth.signIn')}
             </Link>
           </p>
         </div>

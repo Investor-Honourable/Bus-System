@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
@@ -91,27 +91,37 @@ if ($method === 'POST') {
     }
     
     $user_id = intval($input['user_id']);
-    $license_number = mysqli_real_escape_string($conn, $input['license_number']);
-    $license_expiry = isset($input['license_expiry']) ? mysqli_real_escape_string($conn, $input['license_expiry']) : date('Y-m-d', strtotime('+1 year'));
-    $status = isset($input['status']) ? mysqli_real_escape_string($conn, $input['status']) : 'active';
+    $license_number = trim($input['license_number']);
+    $license_expiry = isset($input['license_expiry']) ? trim($input['license_expiry']) : date('Y-m-d', strtotime('+1 year'));
+    $status = isset($input['status']) ? trim($input['status']) : 'active';
     
-    // Check if driver already exists
-    $check = "SELECT id FROM drivers WHERE user_id = $user_id";
-    $checkResult = mysqli_query($conn, $check);
-    
-    if (mysqli_num_rows($checkResult) > 0) {
-        // Update existing driver
-        $query = "UPDATE drivers SET license_number = '$license_number', license_expiry = '$license_expiry', status = '$status' WHERE user_id = $user_id";
-    } else {
-        // Insert new driver
-        $query = "INSERT INTO drivers (user_id, license_number, license_expiry, status) VALUES ($user_id, '$license_number', '$license_expiry', '$status')";
+    // Validate status
+    if (!in_array($status, ['active', 'inactive', 'suspended'])) {
+        $status = 'active';
     }
     
-    if (mysqli_query($conn, $query)) {
+    // Check if driver already exists using prepared statement
+    $check = $conn->prepare("SELECT id FROM drivers WHERE user_id = ?");
+    $check->bind_param("i", $user_id);
+    $check->execute();
+    $checkResult = $check->get_result();
+    
+    if ($checkResult->num_rows > 0) {
+        // Update existing driver using prepared statement
+        $stmt = $conn->prepare("UPDATE drivers SET license_number = ?, license_expiry = ?, status = ? WHERE user_id = ?");
+        $stmt->bind_param("sssi", $license_number, $license_expiry, $status, $user_id);
+    } else {
+        // Insert new driver using prepared statement
+        $stmt = $conn->prepare("INSERT INTO drivers (user_id, license_number, license_expiry, status) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("isss", $user_id, $license_number, $license_expiry, $status);
+    }
+    
+    if ($stmt->execute()) {
         echo json_encode(['success' => true, 'message' => 'Driver saved successfully']);
     } else {
-        echo json_encode(['success' => false, 'message' => mysqli_error($conn)]);
+        echo json_encode(['success' => false, 'message' => $stmt->error]);
     }
+    $stmt->close();
     exit;
 }
 
@@ -131,29 +141,43 @@ if ($method === 'PUT') {
         exit;
     }
     
-    // Get user_id from drivers table to update user record
-    $getUserIdQuery = "SELECT user_id FROM drivers WHERE id = $id";
-    $userIdResult = mysqli_query($conn, $getUserIdQuery);
-    $userId = $id; // Default to id if driver record doesn't exist
-    if ($userIdResult && mysqli_num_rows($userIdResult) > 0) {
-        $userIdRow = mysqli_fetch_assoc($userIdResult);
+    // Get user_id from drivers table to update user record using prepared statement
+    $getUserIdQuery = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
+    $getUserIdQuery->bind_param("i", $id);
+    $getUserIdQuery->execute();
+    $userIdResult = $getUserIdQuery->get_result();
+    $userId = $id;
+    if ($userIdResult && $userIdResult->num_rows > 0) {
+        $userIdRow = $userIdResult->fetch_assoc();
         $userId = intval($userIdRow['user_id']);
     }
+    $getUserIdQuery->close();
     
-    // Update user table for username and phone if provided
+    // Update user table for username and phone if provided using prepared statements
     if (isset($input['username']) && !empty($input['username'])) {
-        $username = mysqli_real_escape_string($conn, $input['username']);
-        mysqli_query($conn, "UPDATE users SET name = '$username', username = '$username' WHERE id = $userId");
+        $username = trim($input['username']);
+        $updateUser = $conn->prepare("UPDATE users SET name = ?, username = ? WHERE id = ?");
+        $updateUser->bind_param("ssi", $username, $username, $userId);
+        $updateUser->execute();
+        $updateUser->close();
     }
     
     if (isset($input['phone'])) {
-        $phone = mysqli_real_escape_string($conn, $input['phone']);
-        mysqli_query($conn, "UPDATE users SET phone = '$phone' WHERE id = $userId");
+        $phone = trim($input['phone']);
+        $updatePhone = $conn->prepare("UPDATE users SET phone = ? WHERE id = ?");
+        $updatePhone->bind_param("si", $phone, $userId);
+        $updatePhone->execute();
+        $updatePhone->close();
     }
     
-    $license_number = isset($input['license_number']) ? mysqli_real_escape_string($conn, $input['license_number']) : '';
-    $license_expiry = isset($input['license_expiry']) ? mysqli_real_escape_string($conn, $input['license_expiry']) : null;
-    $status = isset($input['status']) ? mysqli_real_escape_string($conn, $input['status']) : 'active';
+    $license_number = isset($input['license_number']) ? trim($input['license_number']) : '';
+    $license_expiry = isset($input['license_expiry']) ? trim($input['license_expiry']) : null;
+    $status = isset($input['status']) ? trim($input['status']) : 'active';
+    
+    // Validate status
+    if (!in_array($status, ['active', 'inactive', 'suspended'])) {
+        $status = 'active';
+    }
     
     // Handle assignment IDs - only update if explicitly provided
     $has_bus_assignment = isset($input['assigned_bus_id']) && $input['assigned_bus_id'] !== '' && $input['assigned_bus_id'] !== null;
@@ -230,26 +254,33 @@ if ($method === 'DELETE') {
     
     $id = intval($_GET['id']);
     
-    // Get user_id to update user role back to passenger
-    $getDriver = "SELECT user_id FROM drivers WHERE id = $id";
-    $driverResult = mysqli_query($conn, $getDriver);
+    // Get user_id to update user role back to passenger using prepared statement
+    $getDriver = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
+    $getDriver->bind_param("i", $id);
+    $getDriver->execute();
+    $driverResult = $getDriver->get_result();
     
-    if ($driverRow = mysqli_fetch_assoc($driverResult)) {
+    if ($driverRow = $driverResult->fetch_assoc()) {
         $user_id = $driverRow['user_id'];
         
-        // Delete driver record
-        $query = "DELETE FROM drivers WHERE id = $id";
+        // Delete driver record using prepared statement
+        $stmt = $conn->prepare("DELETE FROM drivers WHERE id = ?");
+        $stmt->bind_param("i", $id);
         
-        if (mysqli_query($conn, $query)) {
+        if ($stmt->execute()) {
             // Optionally update user role
-            // mysqli_query($conn, "UPDATE users SET role = 'passenger' WHERE id = $user_id");
+            // $updateRole = $conn->prepare("UPDATE users SET role = 'passenger' WHERE id = ?");
+            // $updateRole->bind_param("i", $user_id);
+            // $updateRole->execute();
             echo json_encode(['success' => true, 'message' => 'Driver deleted successfully']);
         } else {
-            echo json_encode(['success' => false, 'message' => mysqli_error($conn)]);
+            echo json_encode(['success' => false, 'message' => $stmt->error]);
         }
+        $stmt->close();
     } else {
         echo json_encode(['success' => false, 'message' => 'Driver not found']);
     }
+    $getDriver->close();
     exit;
 }
 

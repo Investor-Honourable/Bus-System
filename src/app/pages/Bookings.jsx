@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { Search, Filter, Calendar, MapPin, Users, DollarSign, Phone, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card.jsx";
 import { Input } from "../components/ui/input.jsx";
@@ -21,6 +22,7 @@ import {
 import { Label } from "../components/ui/label.jsx";
 
 export function Bookings() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
@@ -93,8 +95,8 @@ export function Bookings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-          <p className="text-gray-600 mt-1">View and manage all your bus reservations</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('nav.bookings')}</h1>
+          <p className="text-gray-600 mt-1">{t('bookings.manageDescription')}</p>
         </div>
       </div>
 
@@ -104,7 +106,7 @@ export function Bookings() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Bookings</p>
+                <p className="text-sm text-gray-600">{t('bookings.totalBookings')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {bookings.length}
                 </p>
@@ -119,7 +121,7 @@ export function Bookings() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Upcoming</p>
+                <p className="text-sm text-gray-600">{t('bookings.upcoming')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {bookings.filter((b) => b.status === "confirmed" || b.status === "pending").length}
                 </p>
@@ -134,7 +136,7 @@ export function Bookings() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-sm text-gray-600">{t('bookings.completed')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {bookings.filter((b) => b.status === "completed").length}
                 </p>
@@ -149,9 +151,9 @@ export function Bookings() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Spent</p>
+                <p className="text-sm text-gray-600">{t('bookings.totalSpent')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  22,000 XAF
+                  {bookings.reduce((sum, b) => sum + (parseFloat(b.price.replace(/,/g, '')) || 0), 0).toLocaleString()} XAF
                 </p>
               </div>
               <div className="p-3 bg-amber-50 rounded-lg">
@@ -169,7 +171,7 @@ export function Bookings() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search by name, ID, or route..."
+                placeholder={t('bookings.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -180,15 +182,15 @@ export function Bookings() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">{t('common.all')}</SelectItem>
+                <SelectItem value="confirmed">{t('booking.confirmed')}</SelectItem>
+                <SelectItem value="pending">{t('common.pending')}</SelectItem>
+                <SelectItem value="cancelled">{t('common.cancelled')}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" className="gap-2">
               <Filter className="w-4 h-4" />
-              Filter
+              {t('common.filter')}
             </Button>
           </div>
         </CardHeader>
@@ -242,7 +244,7 @@ export function Bookings() {
                 </div>
                 <div className="grid grid-cols-4 gap-4 pt-3 border-t border-gray-100">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Route</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('route.routeName')}</p>
                     <div className="flex items-center gap-1 text-sm">
                       <MapPin className="w-3 h-3 text-green-600" />
                       <span className="font-medium">{booking.routeFrom}</span>
@@ -252,17 +254,17 @@ export function Bookings() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Bus</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('bus.busNumber')}</p>
                     <p className="text-sm font-medium">{booking.busNumber}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Departure</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('booking.departureTime')}</p>
                     <p className="text-sm font-medium">
                       {booking.departureDate} • {booking.departureTime}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Seat</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('booking.seatSelection')}</p>
                     <p className="text-sm font-medium">{booking.seatNumber}</p>
                   </div>
                 </div>

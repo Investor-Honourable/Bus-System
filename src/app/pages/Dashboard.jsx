@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { MapPin, Clock, Calendar, CalendarIcon, ArrowRight, Bus, Ticket, Search, Download, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card.jsx";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { Badge } from "../components/ui/badge.jsx";
 import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
@@ -14,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(() => JSON.parse(localStorage.getItem("busfare_current_user") || "{}"));
   const [fromCity, setFromCity] = useState("");
@@ -377,8 +379,8 @@ Thank you for traveling with CamTransit!
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       {/* Welcome Section */}
       <div className="mb-4 sm:mb-6 lg:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Welcome Back, {currentUser?.name || 'Traveler'}!</h1>
-        <p className="text-gray-600 text-sm sm:text-base">Plan your next journey across Cameroon</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">{t('auth.loginTitle')}, {currentUser?.name || t('passenger.traveler')}!</h1>
+        <p className="text-gray-600 text-sm sm:text-base">{t('passenger.planJourney')}</p>
       </div>
 
       {/* Stats Cards */}

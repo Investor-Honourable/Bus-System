@@ -6,9 +6,9 @@ ini_set('display_errors', 0);
 require_once("../../config/db.php");
 
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
 
@@ -92,7 +92,6 @@ if ($method === "POST") {
   try {
     $input = json_decode(file_get_contents("php://input"), true);
     
-    // Debug: log what we received
     if (!$input) {
       http_response_code(400);
       echo json_encode(["error" => "Invalid JSON input", "received" => file_get_contents("php://input")]);
@@ -120,17 +119,34 @@ if ($method === "POST") {
     }
 
     // Get bus capacity for available_seats
-    $busStmt = $conn->prepare("SELECT total_seats, capacity FROM buses WHERE id = ?");
+    $busStmt = $conn->prepare("SELECT total_seats FROM buses WHERE id = ?");
+    if (!$busStmt) {
+      http_response_code(500);
+      echo json_encode(["error" => "Prepare failed for bus query", "details" => $conn->error]);
+      exit;
+    }
     $busStmt->bind_param("i", $bus_id);
     $busStmt->execute();
     $busResult = $busStmt->get_result();
     $bus = $busResult->fetch_assoc();
-    $available_seats = $bus['total_seats'] ?? $bus['capacity'] ?? 50;
+    
+    if (!$bus) {
+      http_response_code(400);
+      echo json_encode(["error" => "Bus not found with ID: " . $bus_id]);
+      exit;
+    }
+    
+    $available_seats = intval($bus['total_seats'] ?? 50);
 
     // Insert into trips table (used by passengers)
     $stmt = $conn->prepare("INSERT INTO trips (route_id, bus_id, departure_date, departure_time, arrival_time, price, available_seats, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')");
-    if (!$stmt) { http_response_code(500); echo json_encode(["error"=>"Prepare failed","details"=>$conn->error]); exit; }
-    $stmt->bind_param("iisssdii", $route_id, $bus_id, $date, $dep, $arr, $price, $available_seats);
+    if (!$stmt) { 
+      http_response_code(500); 
+      echo json_encode(["error"=>"Prepare failed","details"=>$conn->error]); 
+      exit; 
+    }
+    
+    $stmt->bind_param("iisssdi", $route_id, $bus_id, $date, $dep, $arr, $price, $available_seats);
 
     if ($stmt->execute()) {
       echo json_encode(["message" => "Trip created", "data" => ["trip_id" => $conn->insert_id]]);
@@ -193,23 +209,42 @@ if ($method === "PUT") {
   }
   if ($status !== "") {
     $allowed_status = ["scheduled", "ongoing", "completed", "cancelled"];
-    if (in_array($status, $allowed_status)) {
-      $updates[] = "status = ?";
-      $params[] = $status;
-      $types .= "s";
+    if (!in_array($status, $allowed_status)) {
+      http_response_code(400);
+      echo json_encode(["error" => "Invalid status. Must be: " . implode(", ", $allowed_status)]);
+      exit;
     }
+    $updates[] = "status = ?";
+    $params[] = $status;
+    $types .= "s";
   }
 
-  if (count($updates) > 0) {
-    $params[] = $trip_id;
-    $types .= "i";
-    $sql = "UPDATE trips SET " . implode(", ", $updates) . " WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
+  if (count($updates) === 0) {
+    http_response_code(400);
+    echo json_encode(["error" => "No fields to update"]);
+    exit;
   }
 
-  echo json_encode(["message" => "Trip updated", "data" => ["trip_id" => $trip_id]]);
+  $params[] = $trip_id;
+  $types .= "i";
+
+  $sql = "UPDATE trips SET " . implode(", ", $updates) . " WHERE id = ?";
+  $stmt = $conn->prepare($sql);
+  
+  if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(["error" => "Prepare failed", "details" => $conn->error]);
+    exit;
+  }
+  
+  $stmt->bind_param($types, ...$params);
+  
+  if ($stmt->execute()) {
+    echo json_encode(["message" => "Trip updated successfully"]);
+  } else {
+    http_response_code(500);
+    echo json_encode(["error" => "Update failed", "details" => $stmt->error]);
+  }
   exit;
 }
 
@@ -223,13 +258,26 @@ if ($method === "DELETE") {
     exit;
   }
 
-  $stmt = $conn->prepare("DELETE FROM trips WHERE id = ?");
-  $stmt->bind_param("i", $trip_id);
-  $stmt->execute();
-
-  echo json_encode(["message" => "Trip deleted", "data" => ["trip_id" => $trip_id]]);
+  // First delete related bookings using prepared statement
+  $deleteBookings = $conn->prepare("DELETE FROM bookings WHERE trip_id = ?");
+  $deleteBookings->bind_param("i", $trip_id);
+  $deleteBookings->execute();
+  $deleteBookings->close();
+  
+  // Then delete the trip using prepared statement
+  $deleteTrip = $conn->prepare("DELETE FROM trips WHERE id = ?");
+  $deleteTrip->bind_param("i", $trip_id);
+  
+  if ($deleteTrip->execute()) {
+    echo json_encode(["message" => "Trip deleted successfully"]);
+  } else {
+    http_response_code(500);
+    echo json_encode(["error" => "Delete failed", "details" => $deleteTrip->error]);
+  }
+  $deleteTrip->close();
   exit;
 }
 
+// If we get here, method not allowed
 http_response_code(405);
 echo json_encode(["error" => "Method not allowed"]);

@@ -309,6 +309,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
+    // Update Language Only
+    if ($action === 'update_language') {
+        $language = $data['language'] ?? 'en';
+        
+        // Validate language code
+        $allowed_languages = ['en', 'fr', 'es', 'ar', 'de', 'zh', 'ja', 'pt'];
+        if (!in_array($language, $allowed_languages)) {
+            $language = 'en';
+        }
+        
+        // Check if user_settings exists, create if not
+        $checkStmt = $conn->prepare("SELECT user_id FROM user_settings WHERE user_id = ?");
+        $checkStmt->bind_param("i", $user_id);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        
+        if ($checkResult->num_rows === 0) {
+            // Create default settings
+            $insertStmt = $conn->prepare("INSERT INTO user_settings (user_id, language) VALUES (?, ?)");
+            $insertStmt->bind_param("is", $user_id, $language);
+            $insertStmt->execute();
+            $insertStmt->close();
+        }
+        $checkStmt->close();
+        
+        $stmt = $conn->prepare("UPDATE user_settings SET language = ? WHERE user_id = ?");
+        $stmt->bind_param("si", $language, $user_id);
+        
+        if ($stmt->execute()) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Language updated successfully',
+                'language' => $language
+            ]);
+        } else {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Failed to update language'
+            ]);
+        }
+        $stmt->close();
+        exit;
+    }
+    
     // Add Payment Method
     if ($action === 'add_payment_method') {
         $type = $data['type'] ?? '';

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { Calendar, MapPin, Clock, Star, Filter, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card.jsx";
 import { Badge } from "../components/ui/badge.jsx";
@@ -13,6 +14,7 @@ import {
 } from "../components/ui/select.jsx";
 
 export function History() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [tripHistory, setTripHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,8 +94,8 @@ export function History() {
     <div className="p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Trip History</h1>
-        <p className="text-gray-600 mt-1">View your past bookings and travel history</p>
+        <h1 className="text-3xl font-bold text-gray-900">{t('nav.history')}</h1>
+        <p className="text-gray-600 mt-1">{t('passenger.bookingHistory')}</p>
       </div>
 
       {/* Stats */}
@@ -102,7 +104,7 @@ export function History() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Trips</p>
+                <p className="text-sm text-gray-600">{t('passenger.pastTrips')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{tripHistory.length}</p>
               </div>
               <div className="p-3 bg-blue-50 rounded-lg">
@@ -115,7 +117,7 @@ export function History() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-sm text-gray-600">{t('common.completed')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{completedTrips}</p>
               </div>
               <div className="p-3 bg-green-50 rounded-lg">
@@ -128,7 +130,7 @@ export function History() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Spent</p>
+                <p className="text-sm text-gray-600">{t('bookings.totalSpent')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">${totalSpent.toFixed(2)}</p>
               </div>
               <div className="p-3 bg-purple-50 rounded-lg">
@@ -141,7 +143,7 @@ export function History() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg. Rating</p>
+                <p className="text-sm text-gray-600">{t('routes.avgRating')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1 flex items-center gap-1">
                   4.7
                   <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
@@ -162,7 +164,7 @@ export function History() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search by route, destination, or ticket ID..."
+                placeholder={t('history.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -173,15 +175,15 @@ export function History() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
+                <SelectItem value="all">{t('common.all')}</SelectItem>
+                <SelectItem value="completed">{t('common.completed')}</SelectItem>
+                <SelectItem value="cancelled">{t('common.cancelled')}</SelectItem>
+                <SelectItem value="refunded">{t('history.refunded')}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" className="gap-2">
               <Filter className="w-4 h-4" />
-              Filter
+              {t('common.filter')}
             </Button>
           </div>
         </CardHeader>
@@ -233,7 +235,7 @@ export function History() {
 
               <div className="grid grid-cols-5 gap-4 py-4 border-t border-gray-100">
                 <div className="col-span-2">
-                  <p className="text-xs text-gray-500 mb-2">Route</p>
+                  <p className="text-xs text-gray-500 mb-2">{t('route.routeName')}</p>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4 text-green-600" />
@@ -247,11 +249,11 @@ export function History() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Bus</p>
+                  <p className="text-xs text-gray-500 mb-2">{t('bus.busNumber')}</p>
                   <p className="text-sm font-medium">{trip.busNumber}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Time</p>
+                  <p className="text-xs text-gray-500 mb-2">{t('common.time')}</p>
                   <div className="flex items-center gap-1 text-sm">
                     <Clock className="w-3 h-3 text-gray-400" />
                     <span className="font-medium">
@@ -260,7 +262,7 @@ export function History() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Seat</p>
+                  <p className="text-xs text-gray-500 mb-2">{t('booking.seatSelection')}</p>
                   <p className="text-sm font-medium">{trip.seatNumber}</p>
                 </div>
               </div>
@@ -268,7 +270,7 @@ export function History() {
               {trip.status === "completed" && !trip.rating && (
                 <div className="pt-4 border-t border-gray-100">
                   <Button variant="outline" size="sm">
-                    Rate this trip
+                    {t('history.rateThisTrip')}
                   </Button>
                 </div>
               )}
@@ -281,8 +283,8 @@ export function History() {
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No History Found</h3>
-            <p className="text-gray-600">No trips match your search criteria</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('history.noHistoryFound')}</h3>
+            <p className="text-gray-600">{t('messages.noResults')}</p>
           </CardContent>
         </Card>
       )}

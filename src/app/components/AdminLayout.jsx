@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router";
+import { useTranslation } from "../i18n/LanguageContext.jsx";
 import { 
   LayoutDashboard, 
   Users, 
@@ -39,6 +40,7 @@ import {
 } from "./ui/popover.jsx";
 
 export function AdminLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
@@ -57,7 +59,7 @@ export function AdminLayout() {
     if (!currentUser?.id) return;
     
     try {
-      const response = await fetch("http://localhost/Bus_system/api/notifications.php?action=list", {
+      const response = await fetch("/api/notifications.php?action=list", {
         headers: { 'User-ID': currentUser.id }
       });
       const data = await response.json();
@@ -76,7 +78,7 @@ export function AdminLayout() {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await fetch("http://localhost/Bus_system/api/notifications.php?action=mark_read", {
+      await fetch("/api/notifications.php?action=mark_read", {
         method: 'PUT',
         headers: { 
           'User-ID': currentUser.id,
@@ -97,7 +99,7 @@ export function AdminLayout() {
   // Mark all as read
   const markAllAsRead = async () => {
     try {
-      await fetch("http://localhost/Bus_system/api/notifications.php?action=mark_all_read", {
+      await fetch("/api/notifications.php?action=mark_all_read", {
         method: 'PUT',
         headers: { 
           'User-ID': currentUser.id,
@@ -130,14 +132,14 @@ export function AdminLayout() {
   };
 
   const navItems = [
-    { to: "/dashboard/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
-    { to: "/dashboard/admin/users", icon: Users, label: "Users", end: false },
-    { to: "/dashboard/admin/buses", icon: Bus, label: "Buses", end: false },
-    { to: "/dashboard/admin/drivers", icon: UserCog, label: "Drivers", end: false },
-    { to: "/dashboard/admin/routes", icon: Route, label: "Routes", end: false },
-    { to: "/dashboard/admin/trips", icon: Calendar, label: "Trips", end: false },
-    { to: "/dashboard/admin/bookings", icon: Ticket, label: "Bookings", end: false },
-    { to: "/dashboard/admin/reports", icon: FileText, label: "Reports", end: false },
+    { to: "/dashboard/admin", icon: LayoutDashboard, label: t('admin.dashboard'), end: true },
+    { to: "/dashboard/admin/users", icon: Users, label: t('admin.users'), end: false },
+    { to: "/dashboard/admin/buses", icon: Bus, label: t('admin.buses'), end: false },
+    { to: "/dashboard/admin/drivers", icon: UserCog, label: t('admin.drivers'), end: false },
+    { to: "/dashboard/admin/routes", icon: Route, label: t('admin.routes'), end: false },
+    { to: "/dashboard/admin/trips", icon: Calendar, label: t('admin.trips'), end: false },
+    { to: "/dashboard/admin/bookings", icon: Ticket, label: t('admin.bookings'), end: false },
+    { to: "/dashboard/admin/reports", icon: FileText, label: t('admin.reports'), end: false },
   ];
 
   // Handle sidebar toggle - use drawer on mobile
@@ -169,7 +171,7 @@ export function AdminLayout() {
               className="w-8 h-8 object-contain flex-shrink-0"
             />
             {isSidebarOpen && (
-              <span className="text-lg font-bold whitespace-nowrap">CamTransit Admin</span>
+              <span className="text-lg font-bold whitespace-nowrap">{t('common.appName')} Admin</span>
             )}
           </div>
         </div>
@@ -202,14 +204,14 @@ export function AdminLayout() {
         <div className="p-3 border-t border-slate-700 space-y-1">
           <button className={`flex items-center gap-3 px-3 py-3 w-full rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors ${!isSidebarOpen ? 'justify-center' : ''}`}>
             <Settings className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span className="font-medium">Settings</span>}
+            {isSidebarOpen && <span className="font-medium">{t('nav.settings')}</span>}
           </button>
           <button 
             onClick={handleLogout}
             className={`flex items-center gap-3 px-3 py-3 w-full rounded-lg text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors ${!isSidebarOpen ? 'justify-center' : ''}`}
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span className="font-medium">Logout</span>}
+            {isSidebarOpen && <span className="font-medium">{t('common.logout')}</span>}
           </button>
         </div>
       </aside>
@@ -224,7 +226,7 @@ export function AdminLayout() {
                 alt="CamTransit Logo" 
                 className="w-8 h-8 object-contain"
               />
-              <span className="text-lg font-bold">CamTransit Admin</span>
+              <span className="text-lg font-bold">{t('common.appName')} Admin</span>
             </SheetTitle>
           </SheetHeader>
           <nav className="flex-1 py-4 overflow-y-auto">
@@ -266,7 +268,7 @@ export function AdminLayout() {
               >
                 {isMobile || isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
-              <span className="text-lg font-semibold text-gray-900 md:hidden">CamTransit</span>
+              <span className="text-lg font-semibold text-gray-900 md:hidden">{t('common.appName')}</span>
             </div>
 
             {/* Search bar */}
@@ -274,7 +276,7 @@ export function AdminLayout() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input 
-                  placeholder="Search..."
+                  placeholder={t('nav.search')}
                   className="pl-10 bg-gray-50 border-gray-200 text-sm h-10"
                 />
               </div>
@@ -293,11 +295,11 @@ export function AdminLayout() {
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0" align="end">
                   <div className="p-4 border-b">
-                    <h3 className="font-semibold">Notifications</h3>
+                    <h3 className="font-semibold">{t('nav.notifications')}</h3>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {isLoadingNotifs ? (
-                      <div className="p-4 text-center text-gray-500">Loading...</div>
+                      <div className="p-4 text-center text-gray-500">{t('common.loading')}</div>
                     ) : notifications.length === 0 ? (
                       <div className="p-4 text-center text-gray-500">No notifications</div>
                     ) : (

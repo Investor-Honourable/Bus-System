@@ -257,7 +257,7 @@ export function Admin() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -327,26 +327,26 @@ export function Admin() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="users" className="gap-2">
-            <Users className="w-4 h-4" />
-            Users
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 overflow-x-auto">
+          <TabsTrigger value="users" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Users</span>
           </TabsTrigger>
-          <TabsTrigger value="buses" className="gap-2">
-            <Bus className="w-4 h-4" />
-            Buses
+          <TabsTrigger value="buses" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Bus className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Buses</span>
           </TabsTrigger>
-          <TabsTrigger value="routes" className="gap-2">
-            <Route className="w-4 h-4" />
-            Routes
+          <TabsTrigger value="routes" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Route className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Routes</span>
           </TabsTrigger>
-          <TabsTrigger value="schedules" className="gap-2">
-            <Calendar className="w-4 h-4" />
-            Schedules
+          <TabsTrigger value="schedules" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Schedules</span>
           </TabsTrigger>
-          <TabsTrigger value="bookings" className="gap-2">
-            <Ticket className="w-4 h-4" />
-            Bookings
+          <TabsTrigger value="bookings" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Ticket className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Bookings</span>
           </TabsTrigger>
         </TabsList>
 
