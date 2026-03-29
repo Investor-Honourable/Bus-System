@@ -1,105 +1,88 @@
 <?php
-session_start();
+/**
+ * Passenger Dashboard API
+ * Handles dashboard data for passengers
+ */
 
-// Protect page
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'passenger') {
-    header("Location: ../index.php");
+session_start();
+require_once '../../config/db.php';
+
+// CORS headers
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, User-ID");
+header("Content-Type: application/json");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
 
-$name = $_SESSION['name'];
-?>
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+    exit;
+}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Passenger Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-        }
+$data = json_decode(file_get_contents("php://input"), true);
+$user_id = $data['user_id'] ?? 0;
 
-        header {
-            background: #1e88e5;
-            color: white;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-        }
+if (!$user_id) {
+    echo json_encode(['status' => 'error', 'message' => 'User ID required']);
+    exit;
+}
 
-        nav {
-            background: #fff;
-            padding: 15px;
-            width: 200px;
-            height: 100vh;
-            position: fixed;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
+try {
+    // Get total bookings
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $total_bookings = $result->fetch_assoc()['total'];
+    
+    // Get confirmed bookings
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings WHERE user_id = ? AND booking_status = 'confirmed'");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $confirmed_bookings = $result->fetch_assoc()['total'];
+    
+    // Get completed trips
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings b JOIN trips t ON b.trip_id = t.id WHERE b.user_id = ? AND t.status = 'completed'");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $completed_trips = $result->fetch_assoc()['total'];
+    
+    // Get total spent
+    $stmt = $conn->prepare("SELECT COALESCE(SUM(total_price), 0) as total FROM bookings WHERE user_id = ? AND payment_status = 'paid'");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $total_spent = $result->fetch_assoc()['total'];
+    
+    // Get upcoming trips
+    $stmt = $conn->prepare("SELECT b.*, t.departure_date, t.departure_time, r.origin, r.destination, r.route_code, bus.bus_number, bus.bus_name FROM bookings b JOIN trips t ON b.trip_id = t.id JOIN routes r ON t.route_id = r.id JOIN buses bus ON t.bus_id = bus.id WHERE b.user_id = ? AND b.booking_status = 'confirmed' AND t.departure_date >= CURDATE() ORDER BY t.departure_date, t.departure_time LIMIT 5");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $upcoming_trips = [];
+    while ($row = $result->fetch_assoc()) {
+        $upcoming_trips[] = $row;
+    }
+    
+    echo json_encode([
+        'status' => 'success',
+        'stats' => [
+            'total_bookings' => $total_bookings,
+            'confirmed_bookings' => $confirmed_bookings,
+            'completed_trips' => $completed_trips,
+            'total_spent' => $total_spent
+        ],
+        'upcoming_trips' => $upcoming_trips
+    ]);
+} catch (Exception $e) {
+    echo json_encode(['status' => 'error', 'message' => 'Failed to fetch dashboard data: ' . $e->getMessage()]);
+}
 
-        nav a {
-            display: block;
-            padding: 10px;
-            text-decoration: none;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        nav a:hover {
-            background: #1e88e5;
-            color: white;
-        }
-
-        main {
-            margin-left: 220px;
-            padding: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
-        }
-    </style>
-</head>
-
-<body>
-
-<header>
-    <h2>🚌 Bus System</h2>
-    <div>
-        Welcome, <?php echo htmlspecialchars($name); ?> |
-        <a href="../logout.php" style="color:white;">Logout</a>
-    </div>
-</header>
-
-<nav>
-    <a href="dashboard.php">Dashboard</a>
-    <a href="book_bus.php">Book Bus</a>
-    <a href="my_bookings.php">My Bookings</a>
-    <a href="profile.php">Profile</a>
-</nav>
-
-<main>
-
-    <div class="card">
-        <h3>Passenger Dashboard</h3>
-        <p>Welcome to your account.</p>
-    </div>
-
-    <div class="card">
-        <h3>Quick Actions</h3>
-        <ul>
-            <li>📌 Book a Bus</li>
-            <li>📌 View Your Bookings</li>
-            <li>📌 Update Profile</li>
-        </ul>
-    </div>
-
-</main>
-
-</body>
-</html>
+$conn->close();

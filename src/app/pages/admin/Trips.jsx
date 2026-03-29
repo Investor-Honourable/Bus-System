@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Plus, Search, Edit, Trash2, Users, Eye, XCircle, Clock, MapPin, Bus, UserPlus } from "lucide-react";
+import { Calendar, Plus, Search, Edit, Trash2, Users, Eye, XCircle, Clock, MapPin, Bus, UserPlus, Download, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Input } from "../../components/ui/input.jsx";
@@ -24,7 +24,9 @@ export function Trips() {
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -47,10 +49,14 @@ export function Trips() {
 
   useEffect(() => {
     fetchData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchData(true), 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchData = async () => {
-    setIsLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    setIsRefreshing(true);
     try {
       const [schedulesRes, routesRes, busesRes] = await Promise.all([
         fetch("/api/dashboards/admin/schedules.php"),
@@ -76,6 +82,7 @@ export function Trips() {
       console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -172,12 +179,11 @@ export function Trips() {
         alert("Trip created successfully!");
         
         // Get route name for notification
-        const routeName = routes.find(r => r.id === parseInt(newSchedule.route_id))?.origin + ' - ' + 
-                         routes.find(r => r.id === parseInt(newSchedule.route_id))?.destination || 'New route';
+        const routeName = routes.find(r => r.id === parseInt(newSchedule.route_id))?.start_point + ' - ' + 
+                         routes.find(r => r.id === parseInt(newSchedule.route_id))?.end_point || 'New route';
         
         // Create notification for admin (API already handles this)
-        toast.success("Trip created successfully!");
-        toast.info("Passengers will be notified of the new trip");
+        // Notifications are handled by the API
         
         // Refresh notifications
         window.dispatchEvent(new CustomEvent('refresh-notifications'));
@@ -346,11 +352,50 @@ export function Trips() {
     setIsDeleteDialogOpen(true);
   };
 
-  const filteredTrips = schedules.filter(trip => 
-    trip.start_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    trip.end_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    trip.bus_number?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTrips = schedules.filter(trip => {
+    const matchesSearch = trip.start_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      trip.end_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      trip.bus_number?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || trip.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const exportToCSV = () => {
+    if (filteredTrips.length === 0) return;
+    
+    const headers = ['ID', 'Route', 'Bus', 'Date', 'Departure', 'Arrival', 'Price', 'Status', 'Available Seats', 'Booked Seats'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredTrips.map(trip => [
+        trip.schedule_id,
+        `${trip.start_point} → ${trip.end_point}`,
+        trip.bus_number,
+        trip.date,
+        trip.departure_time,
+        trip.arrival_time,
+        trip.price || '',
+        trip.status,
+        trip.available_seats || '',
+        trip.booked_seats || ''
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `trips_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const exportToJSON = () => {
+    if (filteredTrips.length === 0) return;
+    
+    const blob = new Blob([JSON.stringify(filteredTrips, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `trips_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -377,10 +422,16 @@ export function Trips() {
           <h1 className="text-3xl font-bold text-gray-900">Trips</h1>
           <p className="text-gray-600 mt-1">Manage trip schedules and view passengers</p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create Trip
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => fetchData()} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Create Trip
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -431,20 +482,40 @@ export function Trips() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          placeholder="Search trips..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 w-full md:w-64"
-        />
-      </div>
-
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>All Trips</CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search trips..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={exportToCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToJSON}>
+              <Download className="w-4 h-4 mr-2" />
+              JSON
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -457,6 +528,8 @@ export function Trips() {
                   <th className="text-left py-3 px-4 font-medium">Date</th>
                   <th className="text-left py-3 px-4 font-medium">Departure</th>
                   <th className="text-left py-3 px-4 font-medium">Arrival</th>
+                  <th className="text-left py-3 px-4 font-medium">Price</th>
+                  <th className="text-left py-3 px-4 font-medium">Seats</th>
                   <th className="text-left py-3 px-4 font-medium">Status</th>
                   <th className="text-left py-3 px-4 font-medium">Actions</th>
                 </tr>
@@ -470,6 +543,14 @@ export function Trips() {
                     <td className="py-3 px-4">{trip.date}</td>
                     <td className="py-3 px-4">{trip.departure_time}</td>
                     <td className="py-3 px-4">{trip.arrival_time}</td>
+                    <td className="py-3 px-4 font-medium">{trip.price ? `${parseFloat(trip.price).toLocaleString()} XAF` : '-'}</td>
+                    <td className="py-3 px-4">
+                      {trip.available_seats !== undefined ? (
+                        <span className={trip.available_seats > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {trip.available_seats} / {trip.total_seats || trip.available_seats + (trip.booked_seats || 0)}
+                        </span>
+                      ) : '-'}
+                    </td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(trip.status)}`}>
                         {trip.status}
@@ -504,11 +585,11 @@ export function Trips() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        {trip.status !== "cancelled" && trip.status !== "completed" && (
+                        {trip.status === "scheduled" && (
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-red-500"
+                            className="h-8 w-8 text-yellow-600"
                             onClick={() => openCancelDialog(trip)}
                             title="Cancel Trip"
                           >
@@ -518,7 +599,7 @@ export function Trips() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-red-600 hover:text-red-800"
+                          className="h-8 w-8 text-red-500"
                           onClick={() => openDeleteDialog(trip)}
                           title="Delete Trip"
                         >
@@ -534,60 +615,62 @@ export function Trips() {
         </CardContent>
       </Card>
 
-      {/* Create Trip Dialog */}
+      {/* Add Trip Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create New Trip</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Route</Label>
-              <Select
-                value={newSchedule.route_id}
-                onValueChange={(value) => setNewSchedule({ ...newSchedule, route_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select route" />
-                </SelectTrigger>
-                <SelectContent>
-                  {routes.map((route) => (
-                    <SelectItem key={route.id} value={route.id}>
-                      {route.start_point} → {route.end_point}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Bus</Label>
-              <Select
-                value={newSchedule.bus_id}
-                onValueChange={(value) => setNewSchedule({ ...newSchedule, bus_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select bus" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buses.map((bus) => (
-                    <SelectItem key={bus.id} value={bus.id}>
-                      {bus.bus_number} ({bus.capacity} seats)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Input
-                type="date"
-                value={newSchedule.date}
-                onChange={(e) => setNewSchedule({ ...newSchedule, date: e.target.value })}
-              />
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Departure Time</Label>
+                <Label>Route *</Label>
+                <Select
+                  value={newSchedule.route_id}
+                  onValueChange={(value) => setNewSchedule({ ...newSchedule, route_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select route" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {routes.map((route) => (
+                      <SelectItem key={route.id} value={String(route.id)}>
+                        {route.start_point} → {route.end_point}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Bus *</Label>
+                <Select
+                  value={newSchedule.bus_id}
+                  onValueChange={(value) => setNewSchedule({ ...newSchedule, bus_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buses.map((bus) => (
+                      <SelectItem key={bus.id} value={String(bus.id)}>
+                        {bus.bus_number} ({bus.capacity} seats)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Date *</Label>
+                <Input
+                  type="date"
+                  value={newSchedule.date}
+                  onChange={(e) => setNewSchedule({ ...newSchedule, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Departure Time *</Label>
                 <Input
                   type="time"
                   value={newSchedule.departure_time}
@@ -595,7 +678,7 @@ export function Trips() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Arrival Time</Label>
+                <Label>Arrival Time *</Label>
                 <Input
                   type="time"
                   value={newSchedule.arrival_time}
@@ -603,70 +686,21 @@ export function Trips() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Price (XAF)</Label>
-              <Input
-                type="number"
-                placeholder="e.g. 5000"
-                value={newSchedule.price}
-                onChange={(e) => setNewSchedule({ ...newSchedule, price: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-            <Button onClick={createSchedule}>Create Trip</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Trip Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Trip</DialogTitle>
-          </DialogHeader>
-          {selectedTrip && (
-            <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Route</Label>
-                <Input value={`${selectedTrip.start_point} → ${selectedTrip.end_point}`} disabled />
-              </div>
-              <div className="space-y-2">
-                <Label>Bus</Label>
-                <Input value={selectedTrip.bus_number} disabled />
-              </div>
-              <div className="space-y-2">
-                <Label>Date</Label>
+                <Label>Price (XAF) *</Label>
                 <Input
-                  type="date"
-                  value={selectedTrip.date}
-                  onChange={(e) => setSelectedTrip({ ...selectedTrip, date: e.target.value })}
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={newSchedule.price}
+                  onChange={(e) => setNewSchedule({ ...newSchedule, price: e.target.value })}
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Departure</Label>
-                  <Input
-                    type="time"
-                    value={selectedTrip.departure_time}
-                    onChange={(e) => setSelectedTrip({ ...selectedTrip, departure_time: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Arrival</Label>
-                  <Input
-                    type="time"
-                    value={selectedTrip.arrival_time}
-                    onChange={(e) => setSelectedTrip({ ...selectedTrip, arrival_time: e.target.value })}
-                  />
-                </div>
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select
-                  value={selectedTrip.status}
-                  onValueChange={(value) => setSelectedTrip({ ...selectedTrip, status: value })}
+                  value={newSchedule.status}
+                  onValueChange={(value) => setNewSchedule({ ...newSchedule, status: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -678,6 +712,114 @@ export function Trips() {
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={createSchedule}>Create Trip</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Trip Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Trip</DialogTitle>
+          </DialogHeader>
+          {selectedTrip && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Route</Label>
+                  <Select
+                    value={selectedTrip.route_id}
+                    onValueChange={(value) => setSelectedTrip({ ...selectedTrip, route_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {routes.map((route) => (
+                        <SelectItem key={route.id} value={String(route.id)}>
+                          {route.start_point} → {route.end_point}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Bus</Label>
+                  <Select
+                    value={selectedTrip.bus_id}
+                    onValueChange={(value) => setSelectedTrip({ ...selectedTrip, bus_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {buses.map((bus) => (
+                        <SelectItem key={bus.id} value={String(bus.id)}>
+                          {bus.bus_number} ({bus.capacity} seats)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={selectedTrip.date}
+                    onChange={(e) => setSelectedTrip({ ...selectedTrip, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Departure Time</Label>
+                  <Input
+                    type="time"
+                    value={selectedTrip.departure_time}
+                    onChange={(e) => setSelectedTrip({ ...selectedTrip, departure_time: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Arrival Time</Label>
+                  <Input
+                    type="time"
+                    value={selectedTrip.arrival_time}
+                    onChange={(e) => setSelectedTrip({ ...selectedTrip, arrival_time: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Price (XAF)</Label>
+                  <Input
+                    type="number"
+                    value={selectedTrip.price || ""}
+                    onChange={(e) => setSelectedTrip({ ...selectedTrip, price: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={selectedTrip.status}
+                    onValueChange={(value) => setSelectedTrip({ ...selectedTrip, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}
@@ -697,9 +839,9 @@ export function Trips() {
           {selectedTrip && (
             <div className="py-4">
               <p className="text-gray-600">
-                Are you sure you want to cancel the trip from <strong>{selectedTrip.start_point}</strong> to <strong>{selectedTrip.end_point}</strong> on <strong>{selectedTrip.date}</strong>?
+                Are you sure you want to cancel the trip from <strong>{selectedTrip.start_point}</strong> to <strong>{selectedTrip.end_point}</strong> on {selectedTrip.date}?
               </p>
-              <p className="text-red-500 mt-2">This action cannot be undone. All passengers will be notified.</p>
+              <p className="text-red-500 mt-2">This will notify all passengers who have booked this trip.</p>
             </div>
           )}
           <DialogFooter>
@@ -718,7 +860,7 @@ export function Trips() {
           {selectedTrip && (
             <div className="py-4">
               <p className="text-gray-600">
-                Are you sure you want to delete the trip from <strong>{selectedTrip.start_point}</strong> to <strong>{selectedTrip.end_point}</strong> on <strong>{selectedTrip.date}</strong>?
+                Are you sure you want to delete the trip from <strong>{selectedTrip.start_point}</strong> to <strong>{selectedTrip.end_point}</strong>?
               </p>
               <p className="text-red-500 mt-2">This action cannot be undone.</p>
             </div>
@@ -732,52 +874,48 @@ export function Trips() {
 
       {/* View Passengers Dialog */}
       <Dialog open={isPassengersDialogOpen} onOpenChange={setIsPassengersDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Trip Passengers</DialogTitle>
           </DialogHeader>
           {selectedTrip && (
             <div className="py-4">
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm font-medium text-blue-900">
-                  {selectedTrip.start_point} → {selectedTrip.end_point}
-                </p>
-                <p className="text-xs text-blue-700">
-                  {selectedTrip.date} | {selectedTrip.departure_time} - {selectedTrip.arrival_time}
-                </p>
+                <p className="font-medium">{selectedTrip.start_point} → {selectedTrip.end_point}</p>
+                <p className="text-sm text-gray-600">{selectedTrip.date} at {selectedTrip.departure_time}</p>
               </div>
-              <div className="space-y-3">
-                {tripPassengers.length > 0 ? (
-                  tripPassengers.map((passenger) => (
-                    <div key={passenger.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{passenger.passenger_name}</p>
-                          <p className="text-xs text-gray-500">{passenger.seats_booked} seat(s)</p>
-                        </div>
-                      </div>
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                        {passenger.booking_status}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No passengers booked for this trip</p>
-                )}
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total Passengers:</span>
-                  <span className="font-medium">{tripPassengers.length}</span>
+              {tripPassengers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-3 font-medium">Name</th>
+                        <th className="text-left py-2 px-3 font-medium">Email</th>
+                        <th className="text-left py-2 px-3 font-medium">Seat</th>
+                        <th className="text-left py-2 px-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tripPassengers.map((passenger, index) => (
+                        <tr key={index} className="border-b">
+                          <td className="py-2 px-3">{passenger.name || passenger.passenger_name}</td>
+                          <td className="py-2 px-3">{passenger.email || passenger.passenger_email}</td>
+                          <td className="py-2 px-3">{passenger.seat_number || '-'}</td>
+                          <td className="py-2 px-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              passenger.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {passenger.status || 'confirmed'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total Seats Booked:</span>
-                  <span className="font-medium">{tripPassengers.reduce((sum, p) => sum + p.seats_booked, 0)}</span>
-                </div>
-              </div>
+              ) : (
+                <p className="text-center text-gray-500 py-8">No passengers booked for this trip</p>
+              )}
             </div>
           )}
           <DialogFooter>
@@ -790,14 +928,13 @@ export function Trips() {
       <Dialog open={isAssignDriverDialogOpen} onOpenChange={setIsAssignDriverDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Driver to Trip</DialogTitle>
+            <DialogTitle>Assign Driver</DialogTitle>
           </DialogHeader>
           {selectedTrip && (
             <div className="space-y-4 py-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Trip</p>
+              <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="font-medium">{selectedTrip.start_point} → {selectedTrip.end_point}</p>
-                <p className="text-sm text-gray-500">{selectedTrip.date} at {selectedTrip.departure_time}</p>
+                <p className="text-sm text-gray-600">{selectedTrip.date} at {selectedTrip.departure_time}</p>
               </div>
               <div className="space-y-2">
                 <Label>Select Driver</Label>
@@ -810,8 +947,8 @@ export function Trips() {
                   </SelectTrigger>
                   <SelectContent>
                     {drivers.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>
-                        {driver.name} {driver.license_number ? `(${driver.license_number})` : ""}
+                      <SelectItem key={driver.id} value={String(driver.id)}>
+                        {driver.name || driver.username} - {driver.license_number}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -821,7 +958,7 @@ export function Trips() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAssignDriverDialogOpen(false)}>Cancel</Button>
-            <Button onClick={assignDriver} disabled={!selectedDriver}>Assign Driver</Button>
+            <Button onClick={assignDriver}>Assign Driver</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

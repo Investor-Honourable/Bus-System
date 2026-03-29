@@ -77,17 +77,22 @@ export function Drivers() {
       // Get today's date for filtering
       const today = new Date().toISOString().split('T')[0];
       
-      if (driversData.success && driversData.data) {
+      // Handle different API response formats
+      const driversList = driversData.drivers || driversData.data || [];
+      const tripsList = tripsData.trips || tripsData.data || [];
+      const bookingsList = bookingsData.bookings || bookingsData.data || [];
+      
+      if (driversList.length > 0) {
         // Map trip_id to schedule_id for compatibility
-        const trips = tripsData.data?.map(trip => ({
+        const trips = tripsList.map(trip => ({
           ...trip,
           schedule_id: trip.trip_id || trip.schedule_id
-        })) || [];
+        }));
         
-        const bookings = bookingsData.data || [];
+        const bookings = bookingsList;
         
         // Calculate stats for each driver based on their assignments
-        const driversWithStats = driversData.data.map(driver => {
+        const driversWithStats = driversList.map(driver => {
           // Filter trips for this driver's assigned bus and route
           const driverTrips = trips.filter(trip => 
             String(trip.bus_id) === String(driver.assigned_bus_id) &&
@@ -133,8 +138,11 @@ export function Drivers() {
       const routesData = await routesRes.json();
       const busesData = await busesRes.json();
       
-      if (routesData.data) setRoutes(routesData.data);
-      if (busesData.data) setBuses(busesData.data);
+      const routesList = routesData.routes || routesData.data || [];
+      const busesList = busesData.buses || busesData.data || [];
+      
+      if (routesList.length > 0) setRoutes(routesList);
+      if (busesList.length > 0) setBuses(busesList);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Failed to load driver data. Please try again.");

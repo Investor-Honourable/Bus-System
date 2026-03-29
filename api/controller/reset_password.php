@@ -1,100 +1,105 @@
 <?php
 /**
- * Reset Password API
- * Handles password reset token validation and password update
+ * Reset Password Controller
+ * Handles password reset
  */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+session_start();
+require_once '../config/db.php';
+
+// CORS headers
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// Include database configuration
-require_once __DIR__ . '/../config/db.php';
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+    exit;
+}
 
-// Get JSON input
-$input = json_decode(file_get_contents('php://input'), true);
+$data = json_decode(file_get_contents("php://input"), true);
 
-// Validate input
-if (!isset($input['token']) || empty($input['token'])) {
+$token = $data['token'] ?? '';
+$new_password = $data['new_password'] ?? '';
+
+// Validate required fields
+if (!$token || !$new_password) {
     echo json_encode([
-        'success' => false,
-        'message' => 'Reset token is required'
+        'status' => 'error',
+        'message' => 'Token and new password are required'
     ]);
     exit;
 }
 
-if (!isset($input['password']) || empty($input['password'])) {
+// Validate password length
+if (strlen($new_password) < 6) {
     echo json_encode([
-        'success' => false,
-        'message' => 'New password is required'
-    ]);
-    exit;
-}
-
-if (strlen($input['password']) < 6) {
-    echo json_encode([
-        'success' => false,
+        'status' => 'error',
         'message' => 'Password must be at least 6 characters'
     ]);
     exit;
 }
 
-$token = $input['token'];
-$newPassword = $input['password'];
-
 try {
-    // Find valid token
-    $stmt = $pdo->prepare("
-        SELECT prt.user_id, u.email, u.name 
-        FROM password_reset_tokens prt
-        JOIN users u ON prt.user_id = u.id
-        WHERE prt.token = ? AND prt.expires_at > NOW()
-    ");
-    $stmt->execute([$token]);
-    $resetRequest = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$resetRequest) {
+    // Check if token exists and is valid
+    $stmt = $conn->prepare("SELECT user_id, expires_at FROM password_reset_tokens WHERE token = ? AND used = 0");
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
         echo json_encode([
-            'success' => false,
-            'message' => 'Invalid or expired reset token'
+            'status' => 'error',
+            'message' => 'Invalid or expired token'
         ]);
         exit;
     }
-
-    // Hash new password
-    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-
-    // Update user password
-    $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-    $updateStmt->execute([$hashedPassword, $resetRequest['user_id']]);
-
-    // Delete used token
-    $deleteStmt = $pdo->prepare("DELETE FROM password_reset_tokens WHERE user_id = ?");
-    $deleteStmt->execute([$resetRequest['user_id']]);
-
-    // Log the password change
-    $logMessage = "[" . date('Y-m-d H:i:s') . "] Password Reset Completed\n";
-    $logMessage .= "Email: " . $resetRequest['email'] . "\n";
-    $logMessage .= "User ID: " . $resetRequest['user_id'] . "\n";
-    $logMessage .= "-------------------------------------------\n";
     
-    file_put_contents(__DIR__ . '/../logs/password_reset.log', $logMessage, FILE_APPEND);
-
+    $token_data = $result->fetch_assoc();
+    
+    // Check if token is expired
+    if (strtotime($token_data['expires_at']) < time()) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Token has expired'
+        ]);
+        exit;
+    }
+    
+    // Hash new password
+    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+    
+    // Update password
+    $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $stmt->bind_param("si", $hashed_password, $token_data['user_id']);
+    
+    if ($stmt->execute()) {
+        // Mark token as used
+        $stmt = $conn->prepare("UPDATE password_reset_tokens SET used = 1 WHERE token = ?");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Password reset successfully'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to reset password'
+        ]);
+    }
+} catch (Exception $e) {
     echo json_encode([
-        'success' => true,
-        'message' => 'Password has been reset successfully'
-    ]);
-
-} catch (PDOException $e) {
-    error_log("Reset password error: " . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'message' => 'An error occurred. Please try again later.'
+        'status' => 'error',
+        'message' => 'Error: ' . $e->getMessage()
     ]);
 }
+
+$conn->close();

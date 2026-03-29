@@ -148,7 +148,7 @@ export function Dashboard() {
         const bookingsResponse = await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "get_bookings", user_id: userId }),
+          body: JSON.stringify({ action: "get_user_bookings", user_id: userId }),
         });
         bookingsData = await bookingsResponse.json();
         console.log("Bookings API response:", bookingsData);

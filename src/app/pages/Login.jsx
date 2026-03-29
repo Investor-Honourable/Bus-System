@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu.jsx";
+import { apiEndpoint } from "../utils/apiConfig.js";
 
 export function Login() {
   const { t, language, changeLanguage, languages: availableLanguages, currentLanguage } = useTranslation();
@@ -51,7 +52,7 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth.php", {
+      const response = await fetch(apiEndpoint("/auth.php"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

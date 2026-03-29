@@ -1,136 +1,150 @@
 <?php
 /**
- * Server-side Authentication Middleware
- * This file should be included at the beginning of all protected API endpoints.
- * It verifies that the user is logged in and has the appropriate role.
+ * Authentication Middleware
+ * Handles session-based authentication
  */
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+session_start();
+
+/**
+ * Check if user is logged in
+ * @return bool
+ */
+function isLoggedIn() {
+    return isset($_SESSION['user_id']);
 }
 
 /**
- * Check if user is authenticated
- * Returns user data if authenticated, false otherwise
+ * Get current user ID
+ * @return int|null
+ */
+function getCurrentUserId() {
+    return $_SESSION['user_id'] ?? null;
+}
+
+/**
+ * Get current user role
+ * @return string|null
+ */
+function getCurrentUserRole() {
+    return $_SESSION['user_role'] ?? null;
+}
+
+/**
+ * Get current user name
+ * @return string|null
+ */
+function getCurrentUserName() {
+    return $_SESSION['user_name'] ?? null;
+}
+
+/**
+ * Get current user email
+ * @return string|null
+ */
+function getCurrentUserEmail() {
+    return $_SESSION['user_email'] ?? null;
+}
+
+/**
+ * Require authentication
+ * Redirects to login if not authenticated
  */
 function requireAuth() {
-    global $conn;
-    
-    // Check if user_id is in session
-    if (!isset($_SESSION['user_id'])) {
+    if (!isLoggedIn()) {
         http_response_code(401);
         echo json_encode([
             'status' => 'error',
-            'message' => 'Authentication required. Please log in.'
+            'message' => 'Authentication required'
         ]);
         exit;
     }
-    
-    // Verify user still exists and is active
-    $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("SELECT id, name, email, role, status FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows === 0) {
-        http_response_code(401);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'User not found. Please log in again.'
-        ]);
-        exit;
-    }
-    
-    $user = $result->fetch_assoc();
-    $stmt->close();
-    
-    // Check if user is active
-    if (isset($user['status']) && $user['status'] === 'inactive') {
-        http_response_code(403);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Account is inactive. Contact administrator.'
-        ]);
-        exit;
-    }
-    
-    return $user;
 }
 
 /**
- * Check if user has specific role
- * @param string|array $roles - Single role or array of roles allowed
+ * Require specific role
+ * @param string|array $roles Required role(s)
  */
 function requireRole($roles) {
-    $user = requireAuth();
+    requireAuth();
     
-    if (!is_array($roles)) {
-        $roles = [$roles];
+    $user_role = getCurrentUserRole();
+    
+    if (is_array($roles)) {
+        if (!in_array($user_role, $roles)) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Insufficient permissions'
+            ]);
+            exit;
+        }
+    } else {
+        if ($user_role !== $roles) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Insufficient permissions'
+            ]);
+            exit;
+        }
     }
-    
-    if (!in_array($user['role'], $roles)) {
-        http_response_code(403);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Access denied. Insufficient permissions.'
-        ]);
-        exit;
-    }
-    
-    return $user;
 }
 
 /**
- * Require admin role (admin or super_admin)
+ * Require admin role
  */
 function requireAdmin() {
-    return requireRole(['admin', 'super_admin']);
+    requireRole('admin');
 }
 
 /**
  * Require driver role
  */
 function requireDriver() {
-    return requireRole(['driver']);
+    requireRole('driver');
 }
 
 /**
- * Get current authenticated user (returns null if not authenticated)
+ * Require passenger role
  */
-function getCurrentUser() {
-    if (!isset($_SESSION['user_id'])) {
+function requirePassenger() {
+    requireRole('passenger');
+}
+
+/**
+ * Get user from request
+ * @return array|null
+ */
+function getUserFromRequest() {
+    $user_id = $_SERVER['HTTP_USER_ID'] ?? $_GET['user_id'] ?? null;
+    
+    if (!$user_id) {
         return null;
     }
     
-    global $conn;
-    $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("SELECT id, name, email, role, phone FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $user = $result->fetch_assoc();
-    $stmt->close();
-    
-    return $user;
+    return [
+        'id' => $user_id,
+        'role' => getCurrentUserRole(),
+        'name' => getCurrentUserName(),
+        'email' => getCurrentUserEmail()
+    ];
 }
 
 /**
- * Log out current user
+ * Validate user access
+ * @param int $user_id User ID to check
+ * @return bool
  */
-function logout() {
-    // Unset all session variables
-    $_SESSION = [];
+function validateUserAccess($user_id) {
+    $current_user_id = getCurrentUserId();
+    $current_user_role = getCurrentUserRole();
     
-    // Destroy the session
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
+    // Admin can access any user
+    if ($current_user_role === 'admin') {
+        return true;
     }
     
-    session_destroy();
+    // Users can only access their own data
+    return $current_user_id == $user_id;
 }

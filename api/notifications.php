@@ -1,228 +1,170 @@
 <?php
-// Notifications API - Handle all notification operations
+/**
+ * Notifications API
+ * Handles notification management
+ */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:5173');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+session_start();
+require 'config/db.php';
+
+// CORS headers
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, User-ID");
+header("Content-Type: application/json");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit();
+    exit;
 }
 
-// Database connection
-$host = 'localhost';
-$dbname = 'bus_system';
-$username = 'root';
-$password = '';
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit();
-}
-
-// Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? '';
 
-// Get user from header or session (simplified - in production use proper auth)
-$userId = isset($_SERVER['HTTP_USER_ID']) ? intval($_SERVER['HTTP_USER_ID']) : 0;
-
-switch ($method) {
-    case 'GET':
-        handleGet($pdo, $action, $userId);
-        break;
-    case 'POST':
-        $input = json_decode(file_get_contents('php://input'), true);
-        handlePost($pdo, $action, $userId, $input);
-        break;
-    case 'PUT':
-        $input = json_decode(file_get_contents('php://input'), true);
-        handlePut($pdo, $action, $userId, $input);
-        break;
-    default:
-        echo json_encode(['status' => 'error', 'message' => 'Invalid request method']);
-}
-
-function handleGet($pdo, $action, $userId) {
-    if ($action === 'list' || $action === '') {
-        // Get notifications for user
-        $stmt = $pdo->prepare("
-            SELECT * FROM notifications 
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            LIMIT 50
-        ");
-        $stmt->execute([$userId]);
-        $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Get unread count
-        $countStmt = $pdo->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE");
-        $countStmt->execute([$userId]);
-        $unreadCount = $countStmt->fetch(PDO::FETCH_ASSOC)['count'];
-        
-        echo json_encode([
-            'status' => 'success',
-            'notifications' => $notifications,
-            'unread_count' => intval($unreadCount)
-        ]);
-    } elseif ($action === 'unread') {
-        // Get only unread notifications
-        $stmt = $pdo->prepare("
-            SELECT * FROM notifications 
-            WHERE user_id = ? AND is_read = FALSE
-            ORDER BY created_at DESC
-            LIMIT 20
-        ");
-        $stmt->execute([$userId]);
-        $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo json_encode([
-            'status' => 'success',
-            'notifications' => $notifications
-        ]);
-    } elseif ($action === 'count') {
-        // Get unread count only
-        $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE");
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        echo json_encode([
-            'status' => 'success',
-            'count' => intval($result['count'])
-        ]);
-    } elseif ($action === 'all') {
-        // Admin: Get all notifications (for all users)
-        $stmt = $pdo->query("
-            SELECT n.*, u.name as user_name, u.email as user_email
-            FROM notifications n
-            LEFT JOIN users u ON n.user_id = u.id
-            ORDER BY n.created_at DESC
-            LIMIT 100
-        ");
-        $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo json_encode([
-            'status' => 'success',
-            'notifications' => $notifications
-        ]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
+// GET - Get notifications
+if ($method === 'GET') {
+    $user_id = $_GET['user_id'] ?? 0;
+    $action = $_GET['action'] ?? 'list';
+    
+    if (!$user_id) {
+        echo json_encode(['status' => 'error', 'message' => 'User ID required']);
+        exit;
+    }
+    
+    // List notifications
+    if ($action === 'list') {
+        try {
+            $stmt = $conn->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            $notifications = [];
+            while ($row = $result->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+            
+            echo json_encode(['status' => 'success', 'notifications' => $notifications]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to fetch notifications: ' . $e->getMessage()]);
+        }
+        exit;
     }
 }
 
-function handlePost($pdo, $action, $userId, $input) {
-    if ($action === 'create' || $action === '') {
-        // Create a new notification
-        // Can be triggered by user actions (booking, cancellation) or admin
+// POST - Create notification
+if ($method === 'POST') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $action = $data['action'] ?? '';
+    
+    if ($action === 'create') {
+        $user_id = $data['user_id'] ?? 0;
+        $title = $data['title'] ?? '';
+        $message = $data['message'] ?? '';
+        $type = $data['type'] ?? 'system';
+        $reference_type = $data['reference_type'] ?? null;
+        $reference_id = $data['reference_id'] ?? null;
         
-        $title = $input['title'] ?? 'Notification';
-        $message = $input['message'] ?? '';
-        $type = $input['type'] ?? 'system';
-        $targetUserId = $input['user_id'] ?? $userId;
-        $referenceType = $input['reference_type'] ?? null;
-        $referenceId = $input['reference_id'] ?? null;
-        
-        $stmt = $pdo->prepare("
-            INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        
-        try {
-            $stmt->execute([$targetUserId, $title, $message, $type, $referenceType, $referenceId]);
-            $notificationId = $pdo->lastInsertId();
-            
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'Notification created',
-                'id' => $notificationId
-            ]);
-        } catch (PDOException $e) {
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        if (!$user_id || !$title || !$message) {
+            echo json_encode(['status' => 'error', 'message' => 'User ID, title, and message are required']);
+            exit;
         }
-    } elseif ($action === 'send_to_all') {
-        // Admin: Send notification to all users or specific role
-        $title = $input['title'] ?? 'Notification';
-        $message = $input['message'] ?? '';
-        $type = $input['type'] ?? 'admin';
-        $role = $input['role'] ?? null; // 'admin', 'driver', 'passenger', or null for all
         
         try {
-            if ($role) {
-                // Send to users with specific role
-                $stmt = $pdo->prepare("SELECT id FROM users WHERE role = ?");
-                $stmt->execute([$role]);
+            $stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?)");
+            $refType = $reference_type ?? '';
+            $refId = $reference_id ?? 0;
+            $stmt->bind_param("isssii", $user_id, $title, $message, $type, $refType, $refId);
+            
+            if ($stmt->execute()) {
+                echo json_encode(['status' => 'success', 'message' => 'Notification created', 'id' => $conn->insert_id]);
             } else {
-                // Send to all users
-                $stmt = $pdo->query("SELECT id FROM users");
+                echo json_encode(['status' => 'error', 'message' => 'Failed to create notification']);
             }
-            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $insertStmt = $pdo->prepare("
-                INSERT INTO notifications (user_id, title, message, type)
-                VALUES (?, ?, ?, ?)
-            ");
-            
-            $count = 0;
-            foreach ($users as $user) {
-                $insertStmt->execute([$user['id'], $title, $message, $type]);
-                $count++;
-            }
-            
-            echo json_encode([
-                'status' => 'success',
-                'message' => "Notification sent to $count users",
-                'count' => $count
-            ]);
-        } catch (PDOException $e) {
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
         }
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
+        exit;
     }
 }
 
-function handlePut($pdo, $action, $userId, $input) {
-    if ($action === 'mark_read' || $action === '') {
-        // Mark a single notification as read
-        $notificationId = $input['id'] ?? 0;
+// PUT - Mark as read
+if ($method === 'PUT') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $action = $data['action'] ?? '';
+    
+    if ($action === 'mark_read') {
+        $notification_id = $data['notification_id'] ?? 0;
+        $user_id = $data['user_id'] ?? 0;
         
-        $stmt = $pdo->prepare("
-            UPDATE notifications 
-            SET is_read = TRUE 
-            WHERE id = ? AND user_id = ?
-        ");
-        $stmt->execute([$notificationId, $userId]);
+        if (!$notification_id || !$user_id) {
+            echo json_encode(['status' => 'error', 'message' => 'Notification ID and User ID required']);
+            exit;
+        }
         
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Notification marked as read'
-        ]);
-    } elseif ($action === 'mark_all_read') {
-        // Mark all notifications as read
-        $stmt = $pdo->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ?");
-        $stmt->execute([$userId]);
+        try {
+            $stmt = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?");
+            $stmt->bind_param("ii", $notification_id, $user_id);
+            
+            if ($stmt->execute()) {
+                echo json_encode(['status' => 'success', 'message' => 'Notification marked as read']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update notification']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    if ($action === 'mark_all_read') {
+        $user_id = $data['user_id'] ?? 0;
         
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'All notifications marked as read'
-        ]);
-    } elseif ($action === 'delete') {
-        // Delete a notification
-        $notificationId = $input['id'] ?? 0;
+        if (!$user_id) {
+            echo json_encode(['status' => 'error', 'message' => 'User ID required']);
+            exit;
+        }
         
-        $stmt = $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?");
-        $stmt->execute([$notificationId, $userId]);
-        
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Notification deleted'
-        ]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
+        try {
+            $stmt = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = ?");
+            $stmt->bind_param("i", $user_id);
+            
+            if ($stmt->execute()) {
+                echo json_encode(['status' => 'success', 'message' => 'All notifications marked as read']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update notifications']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
     }
 }
+
+// DELETE - Delete notification
+if ($method === 'DELETE') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $notification_id = $data['notification_id'] ?? 0;
+    $user_id = $data['user_id'] ?? 0;
+    
+    if (!$notification_id || !$user_id) {
+        echo json_encode(['status' => 'error', 'message' => 'Notification ID and User ID required']);
+        exit;
+    }
+    
+    try {
+        $stmt = $conn->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $notification_id, $user_id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Notification deleted']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to delete notification']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+$conn->close();

@@ -1,8 +1,13 @@
 <?php
+/**
+ * Authentication API
+ * Handles user login and registration
+ */
+
 session_start();
 require 'config/db.php';
 
-// CORS Configuration - Get allowed origin from request or use defaults
+// CORS Configuration
 $allowed_origins = [
     'http://localhost:5173',
     'http://localhost:3000',
@@ -25,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Disable error display in production (enable only for local development)
+// Disable error display in production
 $is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', 'localhost']) || 
                 strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
 if (!$is_localhost) {
@@ -152,6 +157,12 @@ if ($action === 'register') {
         $stmt2->bind_param("issss", $user_id, $name, $username, $phone, $gender);
         $stmt2->execute();
         $stmt2->close();
+
+        // Create user settings
+        $stmt3 = $conn->prepare("INSERT INTO user_settings (user_id) VALUES (?)");
+        $stmt3->bind_param("i", $user_id);
+        $stmt3->execute();
+        $stmt3->close();
 
         // Create session
         $_SESSION['user_id'] = $user_id;

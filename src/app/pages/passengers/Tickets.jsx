@@ -33,7 +33,7 @@ export function Tickets() {
       const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "get_tickets", user_id: userId }),
+        body: JSON.stringify({ action: "get_user_tickets", user_id: userId }),
       });
 
       const data = await response.json();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Route as RouteIcon, Plus, Search, Edit, Trash2, MapPin } from "lucide-react";
+import { Route as RouteIcon, Plus, Search, Edit, Trash2, MapPin, Download, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Input } from "../../components/ui/input.jsx";
@@ -15,6 +15,7 @@ import {
 export function Routes() {
   const [routes, setRoutes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -24,18 +25,25 @@ export function Routes() {
 
   useEffect(() => {
     fetchRoutes();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchRoutes(true), 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchRoutes = async () => {
-    setIsLoading(true);
+  const fetchRoutes = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    setIsRefreshing(true);
     try {
       const response = await fetch("/api/dashboards/admin/routes.php");
       const data = await response.json();
-      if (data.data) setRoutes(data.data);
+      // Handle different API response formats
+      const routesList = data.routes || data.data || [];
+      if (routesList.length > 0) setRoutes(routesList);
     } catch (error) {
       console.error("Error fetching routes:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -108,8 +116,43 @@ export function Routes() {
 
   const filteredRoutes = routes.filter(route => 
     route.start_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    route.end_point?.toLowerCase().includes(searchQuery.toLowerCase())
+    route.end_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    route.route_code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const exportToCSV = () => {
+    if (filteredRoutes.length === 0) return;
+    
+    const headers = ['ID', 'Route Code', 'Start Point', 'End Point', 'Distance (km)', 'Duration', 'Created At'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredRoutes.map(route => [
+        route.id,
+        route.route_code || '',
+        route.start_point,
+        route.end_point,
+        route.distance || '',
+        route.duration || '',
+        route.created_at ? new Date(route.created_at).toLocaleDateString() : ''
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `routes_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const exportToJSON = () => {
+    if (filteredRoutes.length === 0) return;
+    
+    const blob = new Blob([JSON.stringify(filteredRoutes, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `routes_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
 
   if (isLoading) {
     return (
@@ -126,10 +169,16 @@ export function Routes() {
           <h1 className="text-3xl font-bold text-gray-900">Routes</h1>
           <p className="text-gray-600 mt-1">Manage bus routes and destinations</p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Route
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => fetchRoutes()} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Route
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -169,20 +218,28 @@ export function Routes() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          placeholder="Search routes..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 w-full md:w-64"
-        />
-      </div>
-
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>All Routes</CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search routes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={exportToCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToJSON}>
+              <Download className="w-4 h-4 mr-2" />
+              JSON
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -190,10 +247,12 @@ export function Routes() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium">ID</th>
+                  <th className="text-left py-3 px-4 font-medium">Route Code</th>
                   <th className="text-left py-3 px-4 font-medium">Start Point</th>
                   <th className="text-left py-3 px-4 font-medium">End Point</th>
                   <th className="text-left py-3 px-4 font-medium">Distance</th>
                   <th className="text-left py-3 px-4 font-medium">Duration</th>
+                  <th className="text-left py-3 px-4 font-medium">Created</th>
                   <th className="text-left py-3 px-4 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -201,10 +260,14 @@ export function Routes() {
                 {filteredRoutes.map((route) => (
                   <tr key={route.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">#{route.id}</td>
+                    <td className="py-3 px-4 font-medium">{route.route_code || '-'}</td>
                     <td className="py-3 px-4 font-medium">{route.start_point}</td>
                     <td className="py-3 px-4">{route.end_point}</td>
-                    <td className="py-3 px-4">{route.distance || "N/A"}</td>
+                    <td className="py-3 px-4">{route.distance ? `${route.distance} km` : "N/A"}</td>
                     <td className="py-3 px-4">{route.duration || "N/A"}</td>
+                    <td className="py-3 px-4 text-gray-500">
+                      {route.created_at ? new Date(route.created_at).toLocaleDateString() : "N/A"}
+                    </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
                         <Button 

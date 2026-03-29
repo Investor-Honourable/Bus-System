@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, TrendingUp, Users, Ticket, DollarSign, Bus, Calendar, MapPin, Activity, Download } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Ticket, DollarSign, Bus, Calendar, MapPin, Activity, Download, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs.jsx";
@@ -15,14 +15,19 @@ export function Reports() {
     monthlyData: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [period, setPeriod] = useState("month");
 
   useEffect(() => {
     fetchStats();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchStats(true), 30000);
+    return () => clearInterval(interval);
   }, [period]);
 
-  const fetchStats = async () => {
-    setIsLoading(true);
+  const fetchStats = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    setIsRefreshing(true);
     try {
       // Fetch all necessary data
       const [usersRes, busesRes, routesRes, bookingsRes, schedulesRes] = await Promise.all([
@@ -39,10 +44,10 @@ export function Reports() {
       const bookingsData = await bookingsRes.json();
       const schedulesData = await schedulesRes.json();
 
-      const users = usersData.data || [];
+      const users = usersData.users || usersData.data || [];
       const buses = busesData.data || [];
       const routes = routesData.data || [];
-      const bookings = bookingsData.data || [];
+      const bookings = bookingsData.bookings || bookingsData.data || [];
       const schedules = schedulesData.data || [];
 
       // Calculate most popular route from bookings
@@ -52,7 +57,7 @@ export function Reports() {
         const route = booking.route || booking.route_name || `${booking.origin} → ${booking.destination}`;
         if (route) {
           routeCounts[route] = (routeCounts[route] || 0) + 1;
-          routeRevenue[route] = (routeRevenue[route] || 0) + (parseInt(booking.price) || parseInt(booking.total_price) || 0);
+          routeRevenue[route] = (routeRevenue[route] || 0) + (parseFloat(booking.price) || parseFloat(booking.total_price) || 0);
         }
       });
       const sortedRoutes = Object.entries(routeCounts).sort((a, b) => b[1] - a[1]);
@@ -82,7 +87,7 @@ export function Reports() {
           const dateStr = new Date(bookingDate).toISOString().split('T')[0];
           if (dailyBookingsMap[dateStr]) {
             dailyBookingsMap[dateStr].bookings++;
-            dailyBookingsMap[dateStr].revenue += parseInt(booking.price) || parseInt(booking.total_price) || 0;
+            dailyBookingsMap[dateStr].revenue += parseFloat(booking.price) || parseFloat(booking.total_price) || 0;
           }
         }
       });
@@ -102,14 +107,14 @@ export function Reports() {
           const monthStr = new Date(bookingDate).toISOString().slice(0, 7);
           if (monthlyBookingsMap[monthStr]) {
             monthlyBookingsMap[monthStr].bookings++;
-            monthlyBookingsMap[monthStr].revenue += parseInt(booking.price) || parseInt(booking.total_price) || 0;
+            monthlyBookingsMap[monthStr].revenue += parseFloat(booking.price) || parseFloat(booking.total_price) || 0;
           }
         }
       });
       const monthlyData = Object.values(monthlyBookingsMap);
 
       // Calculate total revenue
-      const totalRevenue = bookings.reduce((sum, b) => sum + (parseInt(b.price) || parseInt(b.total_price) || 0), 0);
+      const totalRevenue = bookings.reduce((sum, b) => sum + (parseFloat(b.price) || parseFloat(b.total_price) || 0), 0);
       const passengers = users.filter(u => u.role === "passenger");
 
       // Calculate average values
@@ -151,7 +156,45 @@ export function Reports() {
       });
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Metric', 'Value'];
+    const data = [
+      ['Total Buses', stats.totalBuses],
+      ['Total Trips', stats.totalTrips],
+      ['Total Passengers', stats.totalPassengers],
+      ['Total Revenue (XAF)', stats.totalRevenue],
+      ['Most Popular Route', stats.mostPopularRoute],
+      ['Average Daily Bookings', stats.avgDailyBookings],
+      ['Average Ticket Price (XAF)', stats.avgTicketPrice],
+      ['Bus Utilization (%)', stats.busUtilization],
+      ['Active Routes', stats.activeRoutes],
+      ['Confirmed Bookings', stats.statusCounts?.confirmed || 0],
+      ['Pending Bookings', stats.statusCounts?.pending || 0],
+      ['Cancelled Bookings', stats.statusCounts?.cancelled || 0],
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `reports_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const exportToJSON = () => {
+    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `reports_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
   };
 
   const StatCard = ({ title, value, icon: Icon, color, subtext }) => (
@@ -193,6 +236,10 @@ export function Reports() {
           <p className="text-gray-600 mt-1">System insights and analytics</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => fetchStats()} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Tabs value={period} onValueChange={setPeriod}>
             <TabsList>
               <TabsTrigger value="week">Daily</TabsTrigger>
@@ -200,9 +247,13 @@ export function Reports() {
               <TabsTrigger value="year">Monthly</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export
+          <Button variant="outline" size="sm" onClick={exportToCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToJSON}>
+            <Download className="w-4 h-4 mr-2" />
+            JSON
           </Button>
         </div>
       </div>
@@ -252,7 +303,7 @@ export function Reports() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Based on booking data</p>
-              <p className="text-lg font-semibold text-green-600">+15% from last period</p>
+              <p className="text-lg font-semibold text-green-600">Based on booking data</p>
             </div>
           </div>
         </CardContent>

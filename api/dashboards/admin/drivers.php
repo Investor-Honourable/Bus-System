@@ -1,287 +1,215 @@
 <?php
-header('Content-Type: application/json');
+/**
+ * Admin Drivers API
+ * Handles driver management for administrators
+ */
+
+session_start();
+require_once '../../config/db.php';
+
+// CORS headers
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
-
-require_once __DIR__ . '/../../config/db.php';
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// GET - Fetch all drivers
 if ($method === 'GET') {
-    // Get all drivers with user information
-    $query = "
-        SELECT 
-            d.id,
-            d.user_id,
-            d.license_number,
-            d.license_expiry,
-            d.status as driver_status,
-            d.assigned_bus_id,
-            d.assigned_route_id,
-            d.rating,
-            d.total_trips,
-            d.created_at,
-            u.name,
-            u.username,
-            u.email,
-            u.phone,
-            u.gender,
-            u.role,
-            u.created_at as user_created_at
-        FROM drivers d
-        INNER JOIN users u ON d.user_id = u.id
-        ORDER BY d.created_at DESC
-    ";
-    
-    $result = mysqli_query($conn, $query);
-    
-    if (!$result) {
-        echo json_encode(['success' => false, 'message' => mysqli_error($conn)]);
-        exit;
-    }
-    
-    $drivers = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        $drivers[] = $row;
-    }
-    
-    // If no drivers table data, fall back to users with driver role
-    if (empty($drivers)) {
-        $query = "SELECT * FROM users WHERE role = 'driver' ORDER BY created_at DESC";
-        $result = mysqli_query($conn, $query);
+    try {
+        $sql = "SELECT d.*, u.name, u.email, u.phone, u.gender,
+                b.bus_number, b.bus_name as assigned_bus_name,
+                r.route_code, r.origin, r.destination as assigned_route_name
+                FROM drivers d
+                JOIN users u ON d.user_id = u.id
+                LEFT JOIN buses b ON d.assigned_bus_id = b.id
+                LEFT JOIN routes r ON d.assigned_route_id = r.id
+                ORDER BY u.name";
         
-        if ($result) {
-            while ($row = mysqli_fetch_assoc($result)) {
-                $drivers[] = [
-                    'id' => $row['id'],
-                    'user_id' => $row['id'],
-                    'license_number' => 'DL' . str_pad($row['id'], 8, '0', STR_PAD_LEFT),
-                    'license_expiry' => date('Y-m-d', strtotime('+1 year')),
-                    'driver_status' => 'active',
-                    'assigned_bus_id' => null,
-                    'assigned_route_id' => null,
-                    'rating' => '5.00',
-                    'total_trips' => 0,
-                    'created_at' => $row['created_at'],
-                    'name' => $row['name'],
-                    'username' => $row['username'],
-                    'email' => $row['email'],
-                    'phone' => $row['phone'],
-                    'gender' => $row['gender'],
-                    'role' => $row['role'],
-                    'user_created_at' => $row['created_at']
-                ];
-            }
+        $result = $conn->query($sql);
+        $drivers = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $drivers[] = $row;
         }
+        
+        echo json_encode(['status' => 'success', 'drivers' => $drivers]);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to fetch drivers: ' . $e->getMessage()]);
     }
-    
-    echo json_encode(['success' => true, 'data' => $drivers]);
     exit;
 }
 
+// POST - Add new driver
 if ($method === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $data = json_decode(file_get_contents("php://input"), true);
     
-    if (!isset($input['user_id']) || !isset($input['license_number'])) {
-        echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+    $name = $data['name'] ?? '';
+    $email = $data['email'] ?? '';
+    $phone = $data['phone'] ?? '';
+    $gender = $data['gender'] ?? '';
+    $password = $data['password'] ?? '';
+    $license_number = $data['license_number'] ?? '';
+    $license_expiry = $data['license_expiry'] ?? '';
+    $license_type = $data['license_type'] ?? 'Class B';
+    
+    if (!$name || !$email || !$password || !$license_number || !$license_expiry) {
+        echo json_encode(['status' => 'error', 'message' => 'All fields are required']);
         exit;
     }
     
-    $user_id = intval($input['user_id']);
-    $license_number = trim($input['license_number']);
-    $license_expiry = isset($input['license_expiry']) ? trim($input['license_expiry']) : date('Y-m-d', strtotime('+1 year'));
-    $status = isset($input['status']) ? trim($input['status']) : 'active';
-    
-    // Validate status
-    if (!in_array($status, ['active', 'inactive', 'suspended'])) {
-        $status = 'active';
-    }
-    
-    // Check if driver already exists using prepared statement
-    $check = $conn->prepare("SELECT id FROM drivers WHERE user_id = ?");
-    $check->bind_param("i", $user_id);
-    $check->execute();
-    $checkResult = $check->get_result();
-    
-    if ($checkResult->num_rows > 0) {
-        // Update existing driver using prepared statement
-        $stmt = $conn->prepare("UPDATE drivers SET license_number = ?, license_expiry = ?, status = ? WHERE user_id = ?");
-        $stmt->bind_param("sssi", $license_number, $license_expiry, $status, $user_id);
-    } else {
-        // Insert new driver using prepared statement
-        $stmt = $conn->prepare("INSERT INTO drivers (user_id, license_number, license_expiry, status) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("isss", $user_id, $license_number, $license_expiry, $status);
-    }
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Driver saved successfully']);
-    } else {
-        echo json_encode(['success' => false, 'message' => $stmt->error]);
-    }
-    $stmt->close();
-    exit;
-}
-
-if ($method === 'PUT') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    // Check for id in body or query string
-    $id = 0;
-    if (isset($input['id'])) {
-        $id = intval($input['id']);
-    } elseif (isset($_GET['id'])) {
-        $id = intval($_GET['id']);
-    }
-    
-    if ($id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Driver ID is required']);
-        exit;
-    }
-    
-    // Get user_id from drivers table to update user record using prepared statement
-    $getUserIdQuery = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
-    $getUserIdQuery->bind_param("i", $id);
-    $getUserIdQuery->execute();
-    $userIdResult = $getUserIdQuery->get_result();
-    $userId = $id;
-    if ($userIdResult && $userIdResult->num_rows > 0) {
-        $userIdRow = $userIdResult->fetch_assoc();
-        $userId = intval($userIdRow['user_id']);
-    }
-    $getUserIdQuery->close();
-    
-    // Update user table for username and phone if provided using prepared statements
-    if (isset($input['username']) && !empty($input['username'])) {
-        $username = trim($input['username']);
-        $updateUser = $conn->prepare("UPDATE users SET name = ?, username = ? WHERE id = ?");
-        $updateUser->bind_param("ssi", $username, $username, $userId);
-        $updateUser->execute();
-        $updateUser->close();
-    }
-    
-    if (isset($input['phone'])) {
-        $phone = trim($input['phone']);
-        $updatePhone = $conn->prepare("UPDATE users SET phone = ? WHERE id = ?");
-        $updatePhone->bind_param("si", $phone, $userId);
-        $updatePhone->execute();
-        $updatePhone->close();
-    }
-    
-    $license_number = isset($input['license_number']) ? trim($input['license_number']) : '';
-    $license_expiry = isset($input['license_expiry']) ? trim($input['license_expiry']) : null;
-    $status = isset($input['status']) ? trim($input['status']) : 'active';
-    
-    // Validate status
-    if (!in_array($status, ['active', 'inactive', 'suspended'])) {
-        $status = 'active';
-    }
-    
-    // Handle assignment IDs - only update if explicitly provided
-    $has_bus_assignment = isset($input['assigned_bus_id']) && $input['assigned_bus_id'] !== '' && $input['assigned_bus_id'] !== null;
-    $has_route_assignment = isset($input['assigned_route_id']) && $input['assigned_route_id'] !== '' && $input['assigned_route_id'] !== null;
-    
-    $assigned_bus_id = 'NULL';
-    if ($has_bus_assignment) {
-        $assigned_bus_id = intval($input['assigned_bus_id']);
-    }
-    
-    $assigned_route_id = 'NULL';
-    if ($has_route_assignment) {
-        $assigned_route_id = intval($input['assigned_route_id']);
-    }
-    
-    // Check if driver exists first
-    $checkQuery = "SELECT id, assigned_bus_id, assigned_route_id FROM drivers WHERE id = $id";
-    $checkResult = mysqli_query($conn, $checkQuery);
-    
-    if ($checkResult && mysqli_num_rows($checkResult) > 0) {
-        // Driver record exists - update it
-        $query = "UPDATE drivers SET ";
-        $updates = [];
+    try {
+        // Check if email exists
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if (!empty($license_number)) {
-            $updates[] = "license_number = '$license_number'";
+        if ($result->num_rows > 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Email already registered']);
+            exit;
         }
         
-        if ($license_expiry) {
-            $updates[] = "license_expiry = '$license_expiry'";
-        }
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
         
-        $updates[] = "status = '$status'";
-        
-        // Only update assignment fields if explicitly provided
-        if ($has_bus_assignment) {
-            $updates[] = "assigned_bus_id = " . $assigned_bus_id;
-        }
-        if ($has_route_assignment) {
-            $updates[] = "assigned_route_id = " . $assigned_route_id;
-        }
-        
-        $query .= implode(', ', $updates) . " WHERE id = $id";
-        
-        if (mysqli_query($conn, $query)) {
-            echo json_encode(['success' => true, 'message' => 'Driver updated successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => mysqli_error($conn)]);
-        }
-    } else {
-        // No driver record exists - check if user exists and create driver record
-        $userCheck = mysqli_query($conn, "SELECT id FROM users WHERE id = $id AND role = 'driver'");
-        if ($userCheck && mysqli_num_rows($userCheck) > 0) {
-            // Create new driver record
-            $insertQuery = "INSERT INTO drivers (user_id, license_number, status, assigned_bus_id, assigned_route_id) \n                           VALUES ($id, 'DL00000000', 'active', " . $assigned_bus_id . ", " . $assigned_route_id . ")\n                           ON DUPLICATE KEY UPDATE assigned_bus_id = " . $assigned_bus_id . ", assigned_route_id = " . $assigned_route_id;
-            
-            if (mysqli_query($conn, $insertQuery)) {
-                echo json_encode(['success' => true, 'message' => 'Driver created and assigned successfully']);
-            } else {
-                echo json_encode(['success' => false, 'message' => mysqli_error($conn)]);
-            }
-        } else {
-            echo json_encode(['success' => false, 'message' => 'User not found or not a driver']);
-        }
-    }
-    exit;
-}
-
-if ($method === 'DELETE') {
-    if (!isset($_GET['id'])) {
-        echo json_encode(['success' => false, 'message' => 'Driver ID required']);
-        exit;
-    }
-    
-    $id = intval($_GET['id']);
-    
-    // Get user_id to update user role back to passenger using prepared statement
-    $getDriver = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
-    $getDriver->bind_param("i", $id);
-    $getDriver->execute();
-    $driverResult = $getDriver->get_result();
-    
-    if ($driverRow = $driverResult->fetch_assoc()) {
-        $user_id = $driverRow['user_id'];
-        
-        // Delete driver record using prepared statement
-        $stmt = $conn->prepare("DELETE FROM drivers WHERE id = ?");
-        $stmt->bind_param("i", $id);
+        // Create user
+        $stmt = $conn->prepare("INSERT INTO users (name, email, phone, gender, password, role) VALUES (?, ?, ?, ?, ?, 'driver')");
+        $stmt->bind_param("sssss", $name, $email, $phone, $gender, $hashed_password);
         
         if ($stmt->execute()) {
-            // Optionally update user role
-            // $updateRole = $conn->prepare("UPDATE users SET role = 'passenger' WHERE id = ?");
-            // $updateRole->bind_param("i", $user_id);
-            // $updateRole->execute();
-            echo json_encode(['success' => true, 'message' => 'Driver deleted successfully']);
+            $user_id = $conn->insert_id;
+            
+            // Create driver record
+            $stmt = $conn->prepare("INSERT INTO drivers (user_id, license_number, license_expiry, license_type, status) VALUES (?, ?, ?, ?, 'active')");
+            $stmt->bind_param("isss", $user_id, $license_number, $license_expiry, $license_type);
+            $stmt->execute();
+            
+            // Create user settings
+            $stmt = $conn->prepare("INSERT INTO user_settings (user_id) VALUES (?)");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            
+            echo json_encode(['status' => 'success', 'message' => 'Driver added successfully', 'id' => $user_id]);
         } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
+            echo json_encode(['status' => 'error', 'message' => 'Failed to add driver: ' . $stmt->error]);
         }
-        $stmt->close();
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Driver not found']);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
     }
-    $getDriver->close();
     exit;
 }
 
-echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+// PUT - Update driver
+if ($method === 'PUT') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    
+    $id = $data['id'] ?? 0;
+    $name = $data['name'] ?? '';
+    $email = $data['email'] ?? '';
+    $phone = $data['phone'] ?? '';
+    $gender = $data['gender'] ?? '';
+    $license_number = $data['license_number'] ?? '';
+    $license_expiry = $data['license_expiry'] ?? '';
+    $license_type = $data['license_type'] ?? 'Class B';
+    $status = $data['status'] ?? 'active';
+    $assigned_bus_id = $data['assigned_bus_id'] ?? null;
+    $assigned_route_id = $data['assigned_route_id'] ?? null;
+    
+    if (!$id) {
+        echo json_encode(['status' => 'error', 'message' => 'Driver ID required']);
+        exit;
+    }
+    
+    try {
+        // Get user_id from driver
+        $stmt = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $driver = $result->fetch_assoc();
+        
+        if (!$driver) {
+            echo json_encode(['status' => 'error', 'message' => 'Driver not found']);
+            exit;
+        }
+        
+        // Update user
+        $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, phone = ?, gender = ? WHERE id = ?");
+        $stmt->bind_param("ssssi", $name, $email, $phone, $gender, $driver['user_id']);
+        $stmt->execute();
+        
+        // Update driver
+        $stmt = $conn->prepare("UPDATE drivers SET license_number = ?, license_expiry = ?, license_type = ?, status = ?, assigned_bus_id = ?, assigned_route_id = ? WHERE id = ?");
+        $stmt->bind_param("sssiiii", $license_number, $license_expiry, $license_type, $status, $assigned_bus_id, $assigned_route_id, $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Driver updated successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update driver: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// DELETE - Delete driver
+if ($method === 'DELETE') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $id = $data['id'] ?? 0;
+    
+    if (!$id) {
+        echo json_encode(['status' => 'error', 'message' => 'Driver ID required']);
+        exit;
+    }
+    
+    try {
+        // Get user_id from driver
+        $stmt = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $driver = $result->fetch_assoc();
+        
+        if (!$driver) {
+            echo json_encode(['status' => 'error', 'message' => 'Driver not found']);
+            exit;
+        }
+        
+        // Check if driver has active trips
+        $stmt = $conn->prepare("SELECT COUNT(*) as trip_count FROM trips WHERE driver_id = ? AND status IN ('scheduled', 'boarding', 'in_transit')");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        if ($row['trip_count'] > 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Cannot delete driver with active trips']);
+            exit;
+        }
+        
+        // Delete driver
+        $stmt = $conn->prepare("DELETE FROM drivers WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        
+        // Delete user
+        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->bind_param("i", $driver['user_id']);
+        $stmt->execute();
+        
+        echo json_encode(['status' => 'success', 'message' => 'Driver deleted successfully']);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+$conn->close();

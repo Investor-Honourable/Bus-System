@@ -1,45 +1,76 @@
 <?php
-require_once("../../config/db.php");
+/**
+ * Passenger Dashboard Stats API
+ * Handles dashboard statistics for passengers
+ */
 
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+session_start();
+require_once '../../config/db.php';
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
+// CORS headers
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, User-ID");
+header("Content-Type: application/json");
 
-$passenger_id = isset($_GET['passenger_id']) ? intval($_GET['passenger_id']) : 0;
-
-if ($passenger_id <= 0) {
-    echo json_encode(["error" => "Invalid passenger ID"]);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
 
-// Fetch the stats for the passenger
-$sql = "
-    SELECT
-    (SELECT COUNT(*) FROM bookings WHERE passenger_id = ? AND status = 'CONFIRMED') AS activeTickets,
-    (SELECT COUNT(*) FROM bookings WHERE passenger_id = ?) AS totalBookings,
-    (SELECT COALESCE(SUM(r.price), 0) FROM bookings b LEFT JOIN routes r ON b.schedule_id = r.id WHERE b.passenger_id = ?) AS totalSpent,
-    (SELECT COUNT(*) FROM bookings WHERE passenger_id = ? AND status = 'COMPLETED') AS completedBookings
-";
-
-// Prepare the SQL statement
-$stmt = $conn->prepare($sql);
-
-// Check if the query was prepared successfully
-if ($stmt === false) {
-    echo json_encode(["error" => "Failed to prepare the SQL query", "details" => $conn->error]);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
     exit;
 }
 
-$stmt->bind_param("iiii", $passenger_id, $passenger_id, $passenger_id, $passenger_id);
+$data = json_decode(file_get_contents("php://input"), true);
+$user_id = $data['user_id'] ?? 0;
 
-$stmt->execute();
-$res = $stmt->get_result();
-$data = $res->fetch_assoc();
+if (!$user_id) {
+    echo json_encode(['status' => 'error', 'message' => 'User ID required']);
+    exit;
+}
 
-echo json_encode([
-    "stats" => $data
-]);
-?>
+try {
+    // Get total bookings
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $total_bookings = $result->fetch_assoc()['total'];
+    
+    // Get confirmed bookings
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings WHERE user_id = ? AND booking_status = 'confirmed'");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $confirmed_bookings = $result->fetch_assoc()['total'];
+    
+    // Get completed trips
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM bookings b JOIN trips t ON b.trip_id = t.id WHERE b.user_id = ? AND t.status = 'completed'");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $completed_trips = $result->fetch_assoc()['total'];
+    
+    // Get total spent
+    $stmt = $conn->prepare("SELECT COALESCE(SUM(total_price), 0) as total FROM bookings WHERE user_id = ? AND payment_status = 'paid'");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $total_spent = $result->fetch_assoc()['total'];
+    
+    echo json_encode([
+        'status' => 'success',
+        'stats' => [
+            'total_bookings' => $total_bookings,
+            'confirmed_bookings' => $confirmed_bookings,
+            'completed_trips' => $completed_trips,
+            'total_spent' => $total_spent
+        ]
+    ]);
+} catch (Exception $e) {
+    echo json_encode(['status' => 'error', 'message' => 'Failed to fetch stats: ' . $e->getMessage()]);
+}
+
+$conn->close();

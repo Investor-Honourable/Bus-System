@@ -48,7 +48,10 @@ export function Users() {
       console.log("Response status:", response.status);
       const data = await response.json();
       console.log("Users API response:", data);
-      if (data.data) {
+      if (data.users) {
+        setUsers(data.users);
+        console.log("Users set:", data.users.length);
+      } else if (data.data) {
         setUsers(data.data);
         console.log("Users set:", data.data.length);
       } else if (data.error) {

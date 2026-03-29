@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
 import { Label } from "../components/ui/label.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
+import { apiEndpoint } from "../utils/apiConfig.js";
 
 export function SignUp() {
   const { t } = useTranslation();
@@ -56,7 +57,7 @@ export function SignUp() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth.php", {
+      const response = await fetch(apiEndpoint("/auth.php"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

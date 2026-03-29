@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
 import { Label } from "../components/ui/label.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
+import { apiEndpoint } from "../utils/apiConfig.js";
 
 export function ForgotPassword() {
   const { t } = useTranslation();
@@ -36,7 +37,7 @@ export function ForgotPassword() {
     setError("");
 
     try {
-      const response = await fetch('http://localhost/api/controller/forgot_password.php', {
+      const response = await fetch(apiEndpoint('/controller/forgot_password.php'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,283 +1,166 @@
 <?php
-// Turn off error display to return JSON instead of HTML on errors
-error_reporting(0);
-ini_set('display_errors', 0);
+/**
+ * Admin Schedules/Trips API
+ * Handles trip/schedule management for administrators
+ */
 
-require_once("../../config/db.php");
+session_start();
+require_once '../../config/db.php';
 
-header("Content-Type: application/json; charset=UTF-8");
+// CORS headers
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
-
-$method = $_SERVER["REQUEST_METHOD"];
-
-if ($method === "GET") {
-  // Get trips from the trips table (used by passengers)
-  // Check if driver_id column exists in trips table
-  $hasDriverId = $conn->query("SHOW COLUMNS FROM trips LIKE 'driver_id'")->num_rows > 0;
-  
-  $driverSelect = "";
-  $driverJoin = "";
-  
-  if ($hasDriverId) {
-    $driverSelect = "t.driver_id,";
-    // Check if assignments table exists
-    $assignmentsTableExists = $conn->query("SHOW TABLES LIKE 'driver_trip_assignments'")->num_rows > 0;
-    
-    if ($assignmentsTableExists) {
-      $driverJoin = "
-      LEFT JOIN driver_trip_assignments dta ON dta.trip_id = t.id
-      LEFT JOIN users du ON du.id = dta.driver_id
-      ";
-    } else {
-      $driverJoin = "
-      LEFT JOIN users du ON du.id = t.driver_id
-      ";
-    }
-  }
-  
-  $sql = "
-  SELECT
-    t.id AS trip_id,
-    t.departure_date,
-    t.departure_time,
-    t.arrival_time,
-    t.price,
-    t.available_seats,
-    t.status,
-    t.route_id,
-    t.bus_id,
-    " . $driverSelect . "
-    r.origin,
-    r.destination,
-    b.bus_number,
-    b.bus_name,
-    b.bus_type,
-    b.total_seats,
-    COALESCE(du.name, '') as assigned_driver
-  FROM trips t
-  JOIN routes r ON r.id = t.route_id
-  JOIN buses b ON b.id = t.bus_id
-    " . $driverJoin . "
-  ORDER BY t.departure_date DESC, t.departure_time DESC
-  ";
-
-  $res = $conn->query($sql);
-  if (!$res) {
-    http_response_code(500);
-    echo json_encode(["error" => "Query failed", "details" => $conn->error]);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
-  }
-
-  $data = [];
-  while ($row = $res->fetch_assoc()) {
-    // Normalize field names for frontend compatibility
-    $row['date'] = $row['departure_date'];
-    $row['start_point'] = $row['origin'] ?? $row['start_point'];
-    $row['end_point'] = $row['destination'] ?? $row['end_point'];
-    if (!isset($row['capacity'])) {
-      $row['capacity'] = $row['total_seats'] ?? 50;
-    }
-    $data[] = $row;
-  }
-
-  echo json_encode(["data" => $data]);
-  exit;
 }
 
-if ($method === "POST") {
-  try {
-    $input = json_decode(file_get_contents("php://input"), true);
-    
-    if (!$input) {
-      http_response_code(400);
-      echo json_encode(["error" => "Invalid JSON input", "received" => file_get_contents("php://input")]);
-      exit;
-    }
+$method = $_SERVER['REQUEST_METHOD'];
 
-    $route_id = intval($input["route_id"] ?? 0);
-    $bus_id   = intval($input["bus_id"] ?? 0);
-
-    $date     = trim($input["date"] ?? "");  // departure_date
-    $dep      = trim($input["departure_time"] ?? "");
-    $arr      = trim($input["arrival_time"] ?? "");
-    $price    = floatval($input["price"] ?? 0);
-
-    if ($route_id <= 0 || $bus_id <= 0 || $date === "" || $dep === "" || $arr === "") {
-      http_response_code(400);
-      echo json_encode(["error" => "route_id, bus_id, date, departure_time, arrival_time are required"]);
-      exit;
-    }
-
-    if ($price <= 0) {
-      http_response_code(400);
-      echo json_encode(["error" => "Price must be greater than 0"]);
-      exit;
-    }
-
-    // Get bus capacity for available_seats
-    $busStmt = $conn->prepare("SELECT total_seats FROM buses WHERE id = ?");
-    if (!$busStmt) {
-      http_response_code(500);
-      echo json_encode(["error" => "Prepare failed for bus query", "details" => $conn->error]);
-      exit;
-    }
-    $busStmt->bind_param("i", $bus_id);
-    $busStmt->execute();
-    $busResult = $busStmt->get_result();
-    $bus = $busResult->fetch_assoc();
-    
-    if (!$bus) {
-      http_response_code(400);
-      echo json_encode(["error" => "Bus not found with ID: " . $bus_id]);
-      exit;
-    }
-    
-    $available_seats = intval($bus['total_seats'] ?? 50);
-
-    // Insert into trips table (used by passengers)
-    $stmt = $conn->prepare("INSERT INTO trips (route_id, bus_id, departure_date, departure_time, arrival_time, price, available_seats, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')");
-    if (!$stmt) { 
-      http_response_code(500); 
-      echo json_encode(["error"=>"Prepare failed","details"=>$conn->error]); 
-      exit; 
-    }
-    
-    $stmt->bind_param("iisssdi", $route_id, $bus_id, $date, $dep, $arr, $price, $available_seats);
-
-    if ($stmt->execute()) {
-      echo json_encode(["message" => "Trip created", "data" => ["trip_id" => $conn->insert_id]]);
-    } else {
-      http_response_code(500);
-      echo json_encode(["error" => "Insert failed", "details" => $stmt->error]);
+// GET - Fetch all trips
+if ($method === 'GET') {
+    try {
+        $sql = "SELECT t.*, r.origin, r.destination, r.route_code, r.distance_km, r.duration_minutes,
+                b.bus_number, b.bus_name, b.bus_type,
+                d.license_number, u.name as driver_name, u.phone as driver_phone
+                FROM trips t
+                JOIN routes r ON t.route_id = r.id
+                JOIN buses b ON t.bus_id = b.id
+                LEFT JOIN drivers d ON t.driver_id = d.id
+                LEFT JOIN users u ON d.user_id = u.id
+                ORDER BY t.departure_date DESC, t.departure_time ASC";
+        
+        $result = $conn->query($sql);
+        $trips = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $trips[] = $row;
+        }
+        
+        echo json_encode(['status' => 'success', 'trips' => $trips]);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to fetch trips: ' . $e->getMessage()]);
     }
     exit;
-  } catch (Exception $e) {
-    http_response_code(500);
-    $errorMsg = $e->getMessage();
-    // Check for common database errors
-    if (strpos($errorMsg, 'Table') !== false || strpos($errorMsg, 'trips') !== false) {
-      $errorMsg = "Database table 'trips' may not exist. Please run the database setup.";
-    }
-    echo json_encode(["error" => "Server error", "details" => $errorMsg]);
-    exit;
-  }
 }
 
-if ($method === "PUT") {
-  $input = json_decode(file_get_contents("php://input"), true);
-
-  $trip_id = intval($input["trip_id"] ?? $input["schedule_id"] ?? 0);
-  $date = trim($input["date"] ?? "");
-  $departure_time = trim($input["departure_time"] ?? "");
-  $arrival_time = trim($input["arrival_time"] ?? "");
-  $price = isset($input["price"]) ? floatval($input["price"]) : null;
-  $status = strtolower(trim($input["status"] ?? ""));
-
-  if ($trip_id <= 0) {
-    http_response_code(400);
-    echo json_encode(["error" => "trip_id is required"]);
-    exit;
-  }
-
-  $updates = [];
-  $params = [];
-  $types = "";
-
-  if ($date !== "") {
-    $updates[] = "departure_date = ?";
-    $params[] = $date;
-    $types .= "s";
-  }
-  if ($departure_time !== "") {
-    $updates[] = "departure_time = ?";
-    $params[] = $departure_time;
-    $types .= "s";
-  }
-  if ($arrival_time !== "") {
-    $updates[] = "arrival_time = ?";
-    $params[] = $arrival_time;
-    $types .= "s";
-  }
-  if ($price !== null) {
-    $updates[] = "price = ?";
-    $params[] = $price;
-    $types .= "d";
-  }
-  if ($status !== "") {
-    $allowed_status = ["scheduled", "ongoing", "completed", "cancelled"];
-    if (!in_array($status, $allowed_status)) {
-      http_response_code(400);
-      echo json_encode(["error" => "Invalid status. Must be: " . implode(", ", $allowed_status)]);
-      exit;
+// POST - Add new trip
+if ($method === 'POST') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    
+    $bus_id = $data['bus_id'] ?? 0;
+    $route_id = $data['route_id'] ?? 0;
+    $driver_id = $data['driver_id'] ?? null;
+    $departure_date = $data['departure_date'] ?? '';
+    $departure_time = $data['departure_time'] ?? '';
+    $arrival_time = $data['arrival_time'] ?? '';
+    $price = $data['price'] ?? 0;
+    
+    if (!$bus_id || !$route_id || !$departure_date || !$departure_time || !$arrival_time || !$price) {
+        echo json_encode(['status' => 'error', 'message' => 'All fields are required']);
+        exit;
     }
-    $updates[] = "status = ?";
-    $params[] = $status;
-    $types .= "s";
-  }
-
-  if (count($updates) === 0) {
-    http_response_code(400);
-    echo json_encode(["error" => "No fields to update"]);
+    
+    try {
+        // Get bus available seats
+        $stmt = $conn->prepare("SELECT total_seats FROM buses WHERE id = ?");
+        $stmt->bind_param("i", $bus_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $bus = $result->fetch_assoc();
+        
+        if (!$bus) {
+            echo json_encode(['status' => 'error', 'message' => 'Bus not found']);
+            exit;
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO trips (bus_id, route_id, driver_id, departure_date, departure_time, arrival_time, price, available_seats, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')");
+        $stmt->bind_param("iiisssdi", $bus_id, $route_id, $driver_id, $departure_date, $departure_time, $arrival_time, $price, $bus['total_seats']);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Trip added successfully', 'id' => $conn->insert_id]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to add trip: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
     exit;
-  }
-
-  $params[] = $trip_id;
-  $types .= "i";
-
-  $sql = "UPDATE trips SET " . implode(", ", $updates) . " WHERE id = ?";
-  $stmt = $conn->prepare($sql);
-  
-  if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(["error" => "Prepare failed", "details" => $conn->error]);
-    exit;
-  }
-  
-  $stmt->bind_param($types, ...$params);
-  
-  if ($stmt->execute()) {
-    echo json_encode(["message" => "Trip updated successfully"]);
-  } else {
-    http_response_code(500);
-    echo json_encode(["error" => "Update failed", "details" => $stmt->error]);
-  }
-  exit;
 }
 
-if ($method === "DELETE") {
-  $input = json_decode(file_get_contents("php://input"), true);
-  $trip_id = intval($input["trip_id"] ?? $input["schedule_id"] ?? 0);
-
-  if ($trip_id <= 0) {
-    http_response_code(400);
-    echo json_encode(["error" => "trip_id is required"]);
+// PUT - Update trip
+if ($method === 'PUT') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    
+    $id = $data['id'] ?? 0;
+    $bus_id = $data['bus_id'] ?? 0;
+    $route_id = $data['route_id'] ?? 0;
+    $driver_id = $data['driver_id'] ?? null;
+    $departure_date = $data['departure_date'] ?? '';
+    $departure_time = $data['departure_time'] ?? '';
+    $arrival_time = $data['arrival_time'] ?? '';
+    $price = $data['price'] ?? 0;
+    $status = $data['status'] ?? 'scheduled';
+    
+    if (!$id) {
+        echo json_encode(['status' => 'error', 'message' => 'Trip ID required']);
+        exit;
+    }
+    
+    try {
+        $stmt = $conn->prepare("UPDATE trips SET bus_id = ?, route_id = ?, driver_id = ?, departure_date = ?, departure_time = ?, arrival_time = ?, price = ?, status = ? WHERE id = ?");
+        $stmt->bind_param("iiisssdsi", $bus_id, $route_id, $driver_id, $departure_date, $departure_time, $arrival_time, $price, $status, $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Trip updated successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update trip: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
     exit;
-  }
-
-  // First delete related bookings using prepared statement
-  $deleteBookings = $conn->prepare("DELETE FROM bookings WHERE trip_id = ?");
-  $deleteBookings->bind_param("i", $trip_id);
-  $deleteBookings->execute();
-  $deleteBookings->close();
-  
-  // Then delete the trip using prepared statement
-  $deleteTrip = $conn->prepare("DELETE FROM trips WHERE id = ?");
-  $deleteTrip->bind_param("i", $trip_id);
-  
-  if ($deleteTrip->execute()) {
-    echo json_encode(["message" => "Trip deleted successfully"]);
-  } else {
-    http_response_code(500);
-    echo json_encode(["error" => "Delete failed", "details" => $deleteTrip->error]);
-  }
-  $deleteTrip->close();
-  exit;
 }
 
-// If we get here, method not allowed
-http_response_code(405);
-echo json_encode(["error" => "Method not allowed"]);
+// DELETE - Delete trip
+if ($method === 'DELETE') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $id = $data['id'] ?? 0;
+    
+    if (!$id) {
+        echo json_encode(['status' => 'error', 'message' => 'Trip ID required']);
+        exit;
+    }
+    
+    try {
+        // Check if trip has bookings
+        $stmt = $conn->prepare("SELECT COUNT(*) as booking_count FROM bookings WHERE trip_id = ? AND booking_status = 'confirmed'");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        if ($row['booking_count'] > 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Cannot delete trip with active bookings']);
+            exit;
+        }
+        
+        $stmt = $conn->prepare("DELETE FROM trips WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Trip deleted successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to delete trip']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+$conn->close();

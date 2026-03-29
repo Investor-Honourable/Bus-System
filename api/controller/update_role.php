@@ -1,48 +1,73 @@
 <?php
-header('Content-Type: application/json');
-header("Access-Control-Allow-Origin: http://localhost:5173");
+/**
+ * Update Role Controller
+ * Handles user role updates
+ */
+
+session_start();
+require_once '../config/db.php';
+
+// CORS headers
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
-
-require '../config/db.php';
-
-// Get POST data
-$user_id = $_POST['user_id'] ?? null;
-$new_role = strtolower($_POST['role'] ?? '');
-
-if(!$user_id || $new_role !== 'driver'){
-    echo json_encode(['status'=>'error','message'=>'Invalid user or role']);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
 
-// 1️⃣ Update role in users table
-$stmt = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
-$stmt->bind_param("si", $new_role, $user_id);
-
-if($stmt->execute()){
-
-    // 2️⃣ Insert into drivers table
-    // Use correct column names: assigned_route_id, assigned_bus_id
-    $stmt2 = $conn->prepare(
-        "INSERT INTO drivers (user_id, assigned_route_id, assigned_bus_id, status, rating, total_trips) 
-         SELECT id, NULL, NULL, 'active', 5.00, 0 
-         FROM users WHERE id = ?
-         ON DUPLICATE KEY UPDATE status = 'active'"
-    );
-    $stmt2->bind_param("i", $user_id);
-    $stmt2->execute();
-
-    // 3️⃣ Optional: Remove from passengers
-    $stmt3 = $conn->prepare("DELETE FROM passengers WHERE user_id = ?");
-    $stmt3->bind_param("i", $user_id);
-    $stmt3->execute();
-
-    echo json_encode(['status'=>'success','message'=>'User role updated to driver and added to drivers table']);
-} else {
-    echo json_encode(['status'=>'error','message'=>'Update failed: '.$stmt->error]);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+    exit;
 }
 
-$stmt->close();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$user_id = $data['user_id'] ?? 0;
+$role = $data['role'] ?? '';
+
+// Validate required fields
+if (!$user_id || !$role) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'User ID and role are required'
+    ]);
+    exit;
+}
+
+// Validate role
+$valid_roles = ['admin', 'driver', 'passenger'];
+if (!in_array($role, $valid_roles)) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Invalid role'
+    ]);
+    exit;
+}
+
+try {
+    // Update user role
+    $stmt = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
+    $stmt->bind_param("si", $role, $user_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Role updated successfully'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to update role'
+        ]);
+    }
+} catch (Exception $e) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Error: ' . $e->getMessage()
+    ]);
+}
+
 $conn->close();

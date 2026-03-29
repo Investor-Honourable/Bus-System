@@ -1,143 +1,149 @@
 <?php
-// Turn off error display to return JSON instead of HTML on errors
-error_reporting(0);
-ini_set('display_errors', 0);
+/**
+ * Admin Buses API
+ * Handles bus management for administrators
+ */
 
-require_once("../../config/db.php");
+session_start();
+require_once '../../config/db.php';
 
-header("Content-Type: application/json; charset=UTF-8");
+// CORS headers
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
-$method = $_SERVER["REQUEST_METHOD"];
+$method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === "GET") {
-  // List buses
-  $sql = "SELECT id, bus_number, bus_name, bus_type, total_seats, available_seats, amenities, status, created_at FROM buses ORDER BY id DESC";
-  $res = $conn->query($sql);
-
-  $data = [];
-  while ($row = $res->fetch_assoc()) {
-    // Normalize field names for frontend compatibility
-    $row['capacity'] = $row['total_seats'];
-    $row['type'] = $row['bus_type'];
-    if (!isset($row['type']) || $row['type'] === null || $row['type'] === '') {
-      $row['type'] = 'standard';
+// GET - Fetch all buses
+if ($method === 'GET') {
+    try {
+        $result = $conn->query("SELECT * FROM buses ORDER BY bus_name");
+        $buses = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $row['amenities'] = json_decode($row['amenities'] ?? '[]');
+            $buses[] = $row;
+        }
+        
+        echo json_encode(['status' => 'success', 'buses' => $buses]);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to fetch buses: ' . $e->getMessage()]);
     }
-    $data[] = $row;
-  }
-
-  echo json_encode(["data" => $data]);
-  exit;
+    exit;
 }
 
-if ($method === "POST") {
-  // Create bus
-  $input = json_decode(file_get_contents("php://input"), true);
-
-  $bus_number = trim($input["bus_number"] ?? "");
-  $bus_name = trim($input["bus_name"] ?? $bus_number);
-  $capacity   = intval($input["capacity"] ?? 0);
-  $type       = trim($input["type"] ?? "standard");
-
-  $allowed_types = ["standard", "vip", "luxury"];
-  if (!in_array($type, $allowed_types)) {
-    $type = "standard";
-  }
-
-  if ($bus_number === "" || $capacity <= 0) {
-    http_response_code(400);
-    echo json_encode(["error" => "bus_number and capacity are required"]);
+// POST - Add new bus
+if ($method === 'POST') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    
+    $bus_number = $data['bus_number'] ?? '';
+    $bus_name = $data['bus_name'] ?? '';
+    $bus_type = $data['bus_type'] ?? 'standard';
+    $total_seats = $data['total_seats'] ?? 0;
+    $amenities = json_encode($data['amenities'] ?? []);
+    $license_plate = $data['license_plate'] ?? '';
+    $model = $data['model'] ?? '';
+    $year = $data['year'] ?? null;
+    $color = $data['color'] ?? '';
+    
+    if (!$bus_number || !$bus_name || !$total_seats) {
+        echo json_encode(['status' => 'error', 'message' => 'Bus number, name, and total seats are required']);
+        exit;
+    }
+    
+    try {
+        $stmt = $conn->prepare("INSERT INTO buses (bus_number, bus_name, bus_type, total_seats, available_seats, amenities, license_plate, model, year, color, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
+        $stmt->bind_param("sssissssis", $bus_number, $bus_name, $bus_type, $total_seats, $total_seats, $amenities, $license_plate, $model, $year, $color);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Bus added successfully', 'id' => $conn->insert_id]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to add bus: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
     exit;
-  }
-
-  $stmt = $conn->prepare("INSERT INTO buses (bus_number, bus_name, bus_type, total_seats, available_seats) VALUES (?, ?, ?, ?, ?)");
-  if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(["error" => "SQL prepare failed", "details" => $conn->error]);
-    exit;
-  }
-
-  $stmt->bind_param("sssii", $bus_number, $bus_name, $type, $capacity, $capacity);
-
-  if ($stmt->execute()) {
-    echo json_encode(["message" => "Bus created", "data" => ["id" => $conn->insert_id, "bus_number" => $bus_number, "capacity" => $capacity, "type" => $type]]);
-  } else {
-    http_response_code(500);
-    echo json_encode(["error" => "Insert failed", "details" => $stmt->error]);
-  }
-  exit;
 }
 
-if ($method === "PUT") {
-  // Update bus
-  $input = json_decode(file_get_contents("php://input"), true);
-
-  $id         = intval($input["id"] ?? 0);
-  $bus_number = trim($input["bus_number"] ?? "");
-  $capacity   = intval($input["capacity"] ?? 0);
-  $type       = trim($input["type"] ?? "standard");
-
-  if ($id <= 0) {
-    http_response_code(400);
-    echo json_encode(["error" => "id is required"]);
+// PUT - Update bus
+if ($method === 'PUT') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    
+    $id = $data['id'] ?? 0;
+    $bus_number = $data['bus_number'] ?? '';
+    $bus_name = $data['bus_name'] ?? '';
+    $bus_type = $data['bus_type'] ?? 'standard';
+    $total_seats = $data['total_seats'] ?? 0;
+    $amenities = json_encode($data['amenities'] ?? []);
+    $license_plate = $data['license_plate'] ?? '';
+    $model = $data['model'] ?? '';
+    $year = $data['year'] ?? null;
+    $color = $data['color'] ?? '';
+    $status = $data['status'] ?? 'active';
+    
+    if (!$id) {
+        echo json_encode(['status' => 'error', 'message' => 'Bus ID required']);
+        exit;
+    }
+    
+    try {
+        $stmt = $conn->prepare("UPDATE buses SET bus_number = ?, bus_name = ?, bus_type = ?, total_seats = ?, amenities = ?, license_plate = ?, model = ?, year = ?, color = ?, status = ? WHERE id = ?");
+        $stmt->bind_param("sssissssisi", $bus_number, $bus_name, $bus_type, $total_seats, $amenities, $license_plate, $model, $year, $color, $status, $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Bus updated successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update bus: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
     exit;
-  }
-
-  $updates = [];
-  $params = [];
-  $types = "";
-
-  if ($bus_number !== "") {
-    $updates[] = "bus_number = ?";
-    $params[] = $bus_number;
-    $types .= "s";
-  }
-  if ($capacity > 0) {
-    $updates[] = "capacity = ?";
-    $params[] = $capacity;
-    $types .= "i";
-  }
-  if ($type !== "") {
-    $updates[] = "type = ?";
-    $params[] = $type;
-    $types .= "s";
-  }
-
-  if (count($updates) > 0) {
-    $params[] = $id;
-    $types .= "i";
-    $sql = "UPDATE buses SET " . implode(", ", $updates) . " WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-  }
-
-  echo json_encode(["message" => "Bus updated", "data" => ["id" => $id]]);
-  exit;
 }
 
-if ($method === "DELETE") {
-  // Delete bus
-  $input = json_decode(file_get_contents("php://input"), true);
-  $id = intval($input["id"] ?? 0);
-
-  if ($id <= 0) {
-    http_response_code(400);
-    echo json_encode(["error" => "id is required"]);
+// DELETE - Delete bus
+if ($method === 'DELETE') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $id = $data['id'] ?? 0;
+    
+    if (!$id) {
+        echo json_encode(['status' => 'error', 'message' => 'Bus ID required']);
+        exit;
+    }
+    
+    try {
+        // Check if bus has active trips
+        $stmt = $conn->prepare("SELECT COUNT(*) as trip_count FROM trips WHERE bus_id = ? AND status IN ('scheduled', 'boarding', 'in_transit')");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        if ($row['trip_count'] > 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Cannot delete bus with active trips']);
+            exit;
+        }
+        
+        $stmt = $conn->prepare("DELETE FROM buses WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Bus deleted successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to delete bus']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+    }
     exit;
-  }
-
-  $stmt = $conn->prepare("DELETE FROM buses WHERE id = ?");
-  $stmt->bind_param("i", $id);
-  $stmt->execute();
-
-  echo json_encode(["message" => "Bus deleted", "data" => ["id" => $id]]);
-  exit;
 }
 
-http_response_code(405);
-echo json_encode(["error" => "Method not allowed"]);
+echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+$conn->close();

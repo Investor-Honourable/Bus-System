@@ -1,76 +1,70 @@
 <?php
-require_once("../../config/db.php");
+/**
+ * Admin Update Schedule API
+ * Handles trip status updates
+ */
 
-header("Content-Type: application/json; charset=UTF-8");
+session_start();
+require_once '../../config/db.php';
+
+// CORS headers
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
-
-$input = json_decode(file_get_contents("php://input"), true);
-
-$schedule_id = intval($input["schedule_id"] ?? 0);
-$route_id    = intval($input["route_id"] ?? 0);
-$bus_id      = intval($input["bus_id"] ?? 0);
-$driver_id   = isset($input["driver_id"]) ? intval($input["driver_id"]) : null;
-
-$date        = trim($input["date"] ?? "");
-$dep         = trim($input["departure_time"] ?? "");
-$arr         = trim($input["arrival_time"] ?? "");
-$status      = strtoupper(trim($input["status"] ?? ""));
-
-if ($schedule_id <= 0) {
-  http_response_code(400);
-  echo json_encode(["error" => "schedule_id is required"]);
-  exit;
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
 }
 
-$allowed_status = ["OPEN","STARTED","ARRIVED","COMPLETED","CANCELLED"];
-if ($status !== "" && !in_array($status, $allowed_status, true)) {
-  http_response_code(400);
-  echo json_encode(["error" => "Invalid status"]);
-  exit;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+    exit;
 }
 
-// Build dynamic update
-$fields = [];
-$params = [];
-$types  = "";
+$data = json_decode(file_get_contents("php://input"), true);
 
-if ($route_id > 0) { $fields[] = "route_id=?"; $params[] = $route_id; $types .= "i"; }
-if ($bus_id > 0)   { $fields[] = "bus_id=?";   $params[] = $bus_id;   $types .= "i"; }
+$trip_id = $data['trip_id'] ?? 0;
+$status = $data['status'] ?? '';
 
-if ($driver_id !== null) { $fields[] = "driver_id=?"; $params[] = $driver_id; $types .= "i"; }
-
-if ($date !== "") { $fields[] = "date=?"; $params[] = $date; $types .= "s"; }
-if ($dep  !== "") { $fields[] = "departure_time=?"; $params[] = $dep; $types .= "s"; }
-if ($arr  !== "") { $fields[] = "arrival_time=?";   $params[] = $arr; $types .= "s"; }
-
-if ($status !== "") { $fields[] = "status=?"; $params[] = $status; $types .= "s"; }
-
-if (count($fields) === 0) {
-  http_response_code(400);
-  echo json_encode(["error" => "No fields to update"]);
-  exit;
+if (!$trip_id || !$status) {
+    echo json_encode(['status' => 'error', 'message' => 'Trip ID and status are required']);
+    exit;
 }
 
-$sql = "UPDATE schedule SET " . implode(", ", $fields) . " WHERE id=?";
-$params[] = $schedule_id;
-$types .= "i";
-
-$stmt = $conn->prepare($sql);
-if (!$stmt) {
-  http_response_code(500);
-  echo json_encode(["error" => "Prepare failed", "details" => $conn->error]);
-  exit;
+$valid_statuses = ['scheduled', 'boarding', 'in_transit', 'completed', 'cancelled'];
+if (!in_array($status, $valid_statuses)) {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid status']);
+    exit;
 }
 
-$stmt->bind_param($types, ...$params);
-
-if ($stmt->execute()) {
-  echo json_encode(["message" => "Schedule updated"]);
-} else {
-  http_response_code(500);
-  echo json_encode(["error" => "Update failed", "details" => $stmt->error]);
+try {
+    $stmt = $conn->prepare("UPDATE trips SET status = ? WHERE id = ?");
+    $stmt->bind_param("si", $status, $trip_id);
+    
+    if ($stmt->execute()) {
+        // If trip is completed, update driver stats
+        if ($status === 'completed') {
+            $stmt = $conn->prepare("SELECT driver_id FROM trips WHERE id = ?");
+            $stmt->bind_param("i", $trip_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $trip = $result->fetch_assoc();
+            
+            if ($trip && $trip['driver_id']) {
+                $stmt = $conn->prepare("UPDATE drivers SET total_trips = total_trips + 1 WHERE id = ?");
+                $stmt->bind_param("i", $trip['driver_id']);
+                $stmt->execute();
+            }
+        }
+        
+        echo json_encode(['status' => 'success', 'message' => 'Trip status updated successfully']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to update trip status']);
+    }
+} catch (Exception $e) {
+    echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
 }
+
+$conn->close();

@@ -39,8 +39,8 @@ import {
 } from "../../components/ui/dialog.jsx";
 import { useTranslation } from "../../i18n/LanguageContext.jsx";
 
-// API base URL
-const API_URL = "/api";
+// API configuration
+import { apiEndpoint } from "../../utils/apiConfig.js";
 
 // Get user from localStorage
 const getStoredUser = () => {

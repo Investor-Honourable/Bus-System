@@ -1,35 +1,28 @@
 <?php
+/**
+ * Signup Controller
+ * Handles user registration
+ */
+
 session_start();
-require '../config/db.php';
+require_once '../config/db.php';
 
-// CORS Configuration
-$allowed_origins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000'
-];
-
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowed_origin = in_array($origin, $allowed_origins) ? $origin : $allowed_origins[0];
-
-header("Access-Control-Allow-Origin: $allowed_origin");
+// CORS headers
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit; }
-
-// Disable error display in production
-$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', 'localhost']) || 
-                strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
-if (!$is_localhost) {
-    ini_set('display_errors', 0);
-    error_reporting(0);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
 }
 
-// Get JSON input
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+    exit;
+}
+
 $data = json_decode(file_get_contents("php://input"), true);
 
 $name = $data['name'] ?? '';
@@ -38,10 +31,7 @@ $email = $data['email'] ?? '';
 $phone = $data['phone'] ?? null;
 $gender = $data['gender'] ?? null;
 $password = $data['password'] ?? '';
-
-// SECURITY FIX: Role is always set to 'passenger' - never accept role from user input
-// Only admin users can assign roles through the admin panel
-$role = 'passenger';
+$role = $data['role'] ?? 'passenger';
 
 // Validate required fields
 if (!$name || !$email || !$password) {
@@ -52,61 +42,93 @@ if (!$name || !$email || !$password) {
     exit;
 }
 
-// SECURITY FIX: Removed role validation based on user input - role is hardcoded to 'passenger'
-
-// Check if email already exists
-$stmtCheck = $conn->prepare("SELECT id FROM users WHERE email = ?");
-$stmtCheck->bind_param("s", $email);
-$stmtCheck->execute();
-$stmtCheck->store_result();
-if ($stmtCheck->num_rows > 0) {
+// Validate email format
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'Email already registered'
+        'message' => 'Invalid email format'
     ]);
     exit;
 }
-$stmtCheck->close();
 
-// Hash password
-$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-// Insert into users with the specified role
-$stmt = $conn->prepare("
-    INSERT INTO users (name, username, email, phone, gender, password, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-");
-$stmt->bind_param("sssssss", $name, $username, $email, $phone, $gender, $hashedPassword, $role);
-
-if($stmt->execute()){
-    $user_id = $stmt->insert_id;
-
-    // Insert into passengers table
-    $stmt2 = $conn->prepare("
-        INSERT INTO passengers (user_id, name, username, phone, gender)
-        VALUES (?, ?, ?, ?, ?)
-    ");
-    $stmt2->bind_param("issss", $user_id, $name, $username, $phone, $gender);
-    $stmt2->execute();
-    $stmt2->close();
-
-    // Return JSON including user info
-    echo json_encode([
-        'status' => 'success',
-        'message' => 'User registered successfully',
-        'user' => [
-            'id' => $user_id,
-            'name' => $name,
-            'email' => $email,
-            'role' => 'passenger'
-        ]
-    ]);
-} else {
+// Validate password length
+if (strlen($password) < 6) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'Registration failed: '.$stmt->error
+        'message' => 'Password must be at least 6 characters'
+    ]);
+    exit;
+}
+
+try {
+    // Check if email already exists
+    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Email already registered'
+        ]);
+        exit;
+    }
+    
+    // Hash password
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    
+    // Insert user
+    $stmt = $conn->prepare("INSERT INTO users (name, username, email, phone, gender, password, role) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssss", $name, $username, $email, $phone, $gender, $hashed_password, $role);
+    
+    if ($stmt->execute()) {
+        $user_id = $conn->insert_id;
+        
+        // Create role-specific records
+        if ($role === 'passenger') {
+            $stmt = $conn->prepare("INSERT INTO passengers (user_id, name, username, phone, gender) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("issss", $user_id, $name, $username, $phone, $gender);
+            $stmt->execute();
+        } elseif ($role === 'driver') {
+            $license_number = 'DL' . str_pad($user_id, 8, '0', STR_PAD_LEFT);
+            $stmt = $conn->prepare("INSERT INTO drivers (user_id, license_number, license_expiry, status) VALUES (?, ?, DATE_ADD(CURDATE(), INTERVAL 1 YEAR), 'active')");
+            $stmt->bind_param("is", $user_id, $license_number);
+            $stmt->execute();
+        }
+        
+        // Create user settings
+        $stmt = $conn->prepare("INSERT INTO user_settings (user_id) VALUES (?)");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        
+        // Create session
+        $_SESSION['user_id'] = $user_id;
+        $_SESSION['user_name'] = $name;
+        $_SESSION['user_email'] = $email;
+        $_SESSION['user_role'] = $role;
+        
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'User registered successfully',
+            'user' => [
+                'id' => $user_id,
+                'name' => $name,
+                'email' => $email,
+                'role' => $role
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Registration failed: ' . $stmt->error
+        ]);
+    }
+} catch (Exception $e) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Error: ' . $e->getMessage()
     ]);
 }
 
-$stmt->close();
 $conn->close();

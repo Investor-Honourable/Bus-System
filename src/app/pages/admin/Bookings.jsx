@@ -344,7 +344,7 @@ export function Bookings() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Status</p>
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(selectedBooking.status)}`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(selectedBooking.booking_status)}`}>
                     {selectedBooking.status}
                   </span>
                 </div>

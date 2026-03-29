@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "./components/Layout.jsx";
 import { AdminLayout } from "./components/AdminLayout.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
+import { Landing } from "./pages/Landing.jsx";
 import { Login } from "./pages/Login.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { ForgotPassword } from "./pages/ForgotPassword.jsx";
@@ -14,6 +15,7 @@ import { Discover } from "./pages/Discover.jsx";
 import { Tickets } from "./pages/passengers/Tickets.jsx";
 import { History } from "./pages/passengers/History.jsx";
 import { AdminDashboard } from "./pages/admin/Dashboard.jsx";
+import { EnhancedDashboard } from "./pages/admin/EnhancedDashboard.jsx";
 import { Users } from "./pages/admin/Users.jsx";
 import { Buses } from "./pages/admin/Buses.jsx";
 import { Drivers } from "./pages/admin/Drivers.jsx";
@@ -34,7 +36,7 @@ import { DriverLayout } from "./components/DriverLayout.jsx";
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/login" replace />,
+    element: <Landing />,
   },
   {
     path: "/login",
@@ -97,7 +99,7 @@ export const router = createBrowserRouter([
             path: "",
             element: <AdminLayout />,
             children: [
-              { index: true, element: <AdminDashboard /> },
+              { index: true, element: <EnhancedDashboard /> },
               { path: "users", element: <Users /> },
               { path: "buses", element: <Buses /> },
               { path: "drivers", element: <Drivers /> },

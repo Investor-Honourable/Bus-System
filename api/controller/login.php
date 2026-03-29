@@ -1,25 +1,35 @@
 <?php
-session_start();
-require_once __DIR__ . '/../config/db.php';
+/**
+ * Login Controller
+ * Handles user login
+ */
 
-// Enable CORS for React
+session_start();
+require_once '../config/db.php';
+
+// CORS headers
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json");
 
-// Enable errors for debugging
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
-// Read JSON input from React
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid method']);
+    exit;
+}
+
 $data = json_decode(file_get_contents("php://input"), true);
 
 $email = $data['email'] ?? '';
 $password = $data['password'] ?? '';
 
-// Validate input
-if (empty($email) || empty($password)) {
+// Validate required fields
+if (!$email || !$password) {
     echo json_encode([
         'status' => 'error',
         'message' => 'Email and password are required'
@@ -27,52 +37,52 @@ if (empty($email) || empty($password)) {
     exit;
 }
 
-// Prepare SQL
-$stmt = $conn->prepare("
-    SELECT id, name, username, email, phone, gender, password, role
-    FROM users
-    WHERE email = ?
-");
-$stmt->bind_param("s", $email);
-$stmt->execute();
-
-$result = $stmt->get_result();
-
-// Check user
-if ($result->num_rows === 0) {
+try {
+    // Check if user exists
+    $stmt = $conn->prepare("SELECT id, name, email, password, role FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid email or password'
+        ]);
+        exit;
+    }
+    
+    $user = $result->fetch_assoc();
+    
+    // Verify password
+    if (password_verify($password, $user['password'])) {
+        // Create session
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['user_role'] = $user['role'];
+        
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Login successful',
+            'user' => [
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role']
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid email or password'
+        ]);
+    }
+} catch (Exception $e) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'User not found'
+        'message' => 'Error: ' . $e->getMessage()
     ]);
-    exit;
 }
 
-$user = $result->fetch_assoc();
-
-// Verify password
-if (!password_verify($password, $user['password'])) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Incorrect password'
-    ]);
-    exit;
-}
-
-// Save session
-$_SESSION['user_id'] = $user['id'];
-$_SESSION['role']    = $user['role'];
-$_SESSION['name']    = $user['name'];
-
-// Return JSON to React instead of redirect
-echo json_encode([
-    'status' => 'success',
-    'message' => 'Login successful',
-    'user' => [
-        'id' => $user['id'],
-        'name' => $user['name'],
-        'role' => $user['role']
-    ]
-]);
-
-$stmt->close();
 $conn->close();

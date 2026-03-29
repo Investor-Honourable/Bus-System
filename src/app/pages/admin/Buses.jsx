@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bus as BusIcon, Plus, Search, Edit, Trash2, BusFront, Star } from "lucide-react";
+import { Bus as BusIcon, Plus, Search, Edit, Trash2, BusFront, Star, Download, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Input } from "../../components/ui/input.jsx";
@@ -11,11 +11,20 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../../components/ui/dialog.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.jsx";
 
 export function Buses() {
   const [buses, setBuses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -24,18 +33,25 @@ export function Buses() {
 
   useEffect(() => {
     fetchBuses();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchBuses(true), 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchBuses = async () => {
-    setIsLoading(true);
+  const fetchBuses = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    setIsRefreshing(true);
     try {
       const response = await fetch("/api/dashboards/admin/buses.php");
       const data = await response.json();
-      if (data.data) setBuses(data.data);
+      // Handle different API response formats
+      const busesList = data.buses || data.data || [];
+      if (busesList.length > 0) setBuses(busesList);
     } catch (error) {
       console.error("Error fetching buses:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -111,9 +127,45 @@ export function Buses() {
     setIsDeleteDialogOpen(true);
   };
 
-  const filteredBuses = buses.filter(bus => 
-    bus.bus_number?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredBuses = buses.filter(bus => {
+    const matchesSearch = bus.bus_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bus.bus_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || bus.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const exportToCSV = () => {
+    if (filteredBuses.length === 0) return;
+    
+    const headers = ['ID', 'Bus Number', 'Bus Name', 'Capacity', 'Type', 'Created At'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredBuses.map(bus => [
+        bus.id,
+        bus.bus_number,
+        bus.bus_name || '',
+        bus.capacity,
+        bus.type || 'standard',
+        bus.created_at ? new Date(bus.created_at).toLocaleDateString() : ''
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `buses_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const exportToJSON = () => {
+    if (filteredBuses.length === 0) return;
+    
+    const blob = new Blob([JSON.stringify(filteredBuses, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `buses_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
 
   const getBusTypeColor = (type) => {
     switch (type) {
@@ -139,10 +191,16 @@ export function Buses() {
           <h1 className="text-3xl font-bold text-gray-900">Buses</h1>
           <p className="text-gray-600 mt-1">Manage your fleet of buses</p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Bus
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => fetchBuses()} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Bus
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -196,14 +254,35 @@ export function Buses() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>All Buses</CardTitle>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search buses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-64"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search buses..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="vip">VIP</SelectItem>
+                <SelectItem value="luxury">Luxury</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={exportToCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToJSON}>
+              <Download className="w-4 h-4 mr-2" />
+              JSON
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -213,6 +292,7 @@ export function Buses() {
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium">ID</th>
                   <th className="text-left py-3 px-4 font-medium">Bus Number</th>
+                  <th className="text-left py-3 px-4 font-medium">Bus Name</th>
                   <th className="text-left py-3 px-4 font-medium">Capacity</th>
                   <th className="text-left py-3 px-4 font-medium">Type</th>
                   <th className="text-left py-3 px-4 font-medium">Created</th>
@@ -224,6 +304,7 @@ export function Buses() {
                   <tr key={bus.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">{bus.id}</td>
                     <td className="py-3 px-4 font-medium">{bus.bus_number}</td>
+                    <td className="py-3 px-4">{bus.bus_name || '-'}</td>
                     <td className="py-3 px-4">{bus.capacity} seats</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs rounded-full border ${getBusTypeColor(bus.type)}`}>

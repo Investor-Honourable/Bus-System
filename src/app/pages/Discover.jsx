@@ -116,7 +116,7 @@ export function Discover() {
       const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "get_all_routes" }),
+        body: JSON.stringify({ action: "get_routes" }),
       });
 
       const data = await response.json();
@@ -180,7 +180,7 @@ export function Discover() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "get_all_routes"
+          action: "get_routes"
         }),
       });
 
@@ -264,7 +264,7 @@ export function Discover() {
         const response = await fetch("/api/index.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "search_trips" }),
+          body: JSON.stringify({ action: "get_trips" }),
         });
 
         let data = await response.json();
@@ -283,7 +283,7 @@ export function Discover() {
           const retryResponse = await fetch("/api/index.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "search_trips" }),
+            body: JSON.stringify({ action: "get_trips" }),
           });
           data = await retryResponse.json();
         }
@@ -342,7 +342,7 @@ export function Discover() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "search_trips",
+          action: "get_trips",
           origin: searchFrom,
           destination: searchTo,
           date: searchDate
@@ -371,7 +371,7 @@ export function Discover() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: "search_trips",
+              action: "get_trips",
               origin: searchFrom,
               destination: searchTo
             }),
@@ -629,6 +629,65 @@ export function Discover() {
     setBookingStep("payment");
   };
 
+  // Retry function with exponential backoff and proper error handling
+  const fetchWithRetry = async (url, options, maxRetries = 3, baseDelay = 1000) => {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Attempt ${attempt}/${maxRetries} - Fetching: ${url}`);
+        
+        const response = await fetch(url, options);
+        
+        // Check if response is OK (status 200-299)
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          const error = new Error(`Server error: ${response.status} - ${errorText}`);
+          error.status = response.status;
+          error.statusText = response.statusText;
+          throw error;
+        }
+        
+        // Verify response has content before returning
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          // Clone response to check if JSON is valid without consuming it
+          const clonedResponse = response.clone();
+          try {
+            await clonedResponse.json();
+          } catch (jsonError) {
+            throw new Error('Server returned invalid JSON response');
+          }
+        }
+        
+        console.log(`Attempt ${attempt} succeeded`);
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.error(`Attempt ${attempt}/${maxRetries} failed:`, error.message);
+        
+        // Don't retry on client errors (4xx) - these are permanent failures
+        if (error.status && error.status >= 400 && error.status < 500) {
+          console.log('Client error detected, not retrying');
+          throw error;
+        }
+        
+        if (attempt === maxRetries) {
+          console.error('All retry attempts exhausted');
+          throw error; // Re-throw on final attempt
+        }
+        
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    // This should never be reached, but just in case
+    throw lastError || new Error('All retry attempts failed');
+  };
+
   const handleConfirmPayment = async () => {
     if (!paymentMethod) {
       toast.error("Please select a payment method");
@@ -643,16 +702,16 @@ export function Discover() {
       
       console.log("Creating booking - tripId:", tripId, "userId:", userId);
       
-      // Skip validation and directly create booking
-      const response = await fetch("/api/index.php", {
+      // Use retry logic for the booking request
+      const response = await fetchWithRetry("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "create_booking",
           user_id: userId,
           trip_id: tripId,
-          seats: selectedSeats.length || 1,
-          seat_numbers: selectedSeats.join(',') || '1',
+          number_of_seats: selectedSeats.length || 1,
+          seat_numbers: selectedSeats,
           passenger_name: passengerDetails.fullName,
           passenger_phone: passengerDetails.phone,
           passenger_email: passengerDetails.email,
@@ -660,7 +719,7 @@ export function Discover() {
           special_requests: passengerDetails.specialRequests,
           payment_method: paymentMethod
         }),
-      });
+      }, 3, 1000);
 
       const data = await response.json();
       console.log("Booking response:", data);
@@ -679,14 +738,57 @@ export function Discover() {
         // Refresh the notification count
         window.dispatchEvent(new CustomEvent('refresh-notifications'));
       } else {
-        toast.error(data.message || "Booking failed. Please try again.");
+        // Provide specific error messages based on the response
+        const errorMessage = data.message || "Booking failed. Please try again.";
+        toast.error(errorMessage);
+        
         if (data.taken_seats) {
+          toast.warning("Some seats are no longer available. Please select different seats.");
           fetchBookedSeats(tripId);
         }
       }
     } catch (error) {
       console.error("Booking error:", error);
-      toast.error("Unable to connect to server. Please check your internet connection and try again.");
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      
+      // Provide specific error messages based on error type
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        toast.error(
+          "Unable to connect to server. Please check:\n" +
+          "• Your internet connection\n" +
+          "• The server is running\n" +
+          "• No firewall is blocking the connection",
+          { duration: 8000 }
+        );
+      } else if (error.message.includes('NetworkError') || error.message.includes('network')) {
+        toast.error("Network error. Please check your internet connection and try again.");
+      } else if (error.message.includes('JSON') || error.message.includes('invalid JSON')) {
+        toast.error("Server returned invalid response. Please try again.");
+      } else if (error.message.includes('Server error:')) {
+        // Extract status code from error message
+        const statusMatch = error.message.match(/Server error: (\d+)/);
+        if (statusMatch) {
+          const status = parseInt(statusMatch[1]);
+          if (status === 500) {
+            toast.error("Server error. Please try again later or contact support.");
+          } else if (status === 503) {
+            toast.error("Server is temporarily unavailable. Please try again in a few moments.");
+          } else if (status === 429) {
+            toast.error("Too many requests. Please wait a moment and try again.");
+          } else if (status >= 400 && status < 500) {
+            toast.error("Request error. Please check your input and try again.");
+          } else {
+            toast.error(`Server error (${status}). Please try again later.`);
+          }
+        } else {
+          toast.error("Server error. Please try again later.");
+        }
+      } else {
+        // Show the actual error message for debugging
+        toast.error('Error: ' + (error.message || 'An unexpected error occurred. Please try again.'));
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -1209,7 +1311,7 @@ export function Discover() {
                     const response = await fetch("/api/index.php", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ action: "search_trips" }),
+                      body: JSON.stringify({ action: "get_trips" }),
                     });
                     
                     const data = await response.json();
