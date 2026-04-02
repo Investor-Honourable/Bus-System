@@ -78,7 +78,8 @@ export function Admin() {
     try {
       const response = await fetch("/api/dashboards/admin/users.php");
       const data = await response.json();
-      if (data.data) setUsers(data.data);
+      if (data.users) setUsers(data.users);
+      else if (data.data) setUsers(data.data);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
@@ -88,7 +89,8 @@ export function Admin() {
     try {
       const response = await fetch("/api/dashboards/admin/buses.php");
       const data = await response.json();
-      if (data.data) setBuses(data.data);
+      if (data.buses) setBuses(data.buses);
+      else if (data.data) setBuses(data.data);
     } catch (error) {
       console.error("Error fetching buses:", error);
     }
@@ -98,7 +100,8 @@ export function Admin() {
     try {
       const response = await fetch("/api/dashboards/admin/routes.php");
       const data = await response.json();
-      if (data.data) setRoutes(data.data);
+      if (data.routes) setRoutes(data.routes);
+      else if (data.data) setRoutes(data.data);
     } catch (error) {
       console.error("Error fetching routes:", error);
     }
@@ -108,7 +111,8 @@ export function Admin() {
     try {
       const response = await fetch("/api/dashboards/admin/schedules.php");
       const data = await response.json();
-      if (data.data) setSchedules(data.data);
+      if (data.trips) setSchedules(data.trips);
+      else if (data.data) setSchedules(data.data);
     } catch (error) {
       console.error("Error fetching schedules:", error);
     }
@@ -118,7 +122,8 @@ export function Admin() {
     try {
       const response = await fetch("/api/dashboards/admin/bookings.php");
       const data = await response.json();
-      if (data.data) setBookings(data.data);
+      if (data.bookings) setBookings(data.bookings);
+      else if (data.data) setBookings(data.data);
     } catch (error) {
       console.error("Error fetching bookings:", error);
     }

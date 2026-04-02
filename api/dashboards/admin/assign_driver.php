@@ -73,6 +73,20 @@ if ($method === 'POST') {
         $stmt->bind_param("ii", $driver_id, $trip_id);
         
         if ($stmt->execute()) {
+            // Get the trip info to update driver's route/bus assignment
+            $stmt = $conn->prepare("SELECT route_id, bus_id FROM trips WHERE id = ?");
+            $stmt->bind_param("i", $trip_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $trip_info = $result->fetch_assoc();
+            
+            // Update driver's assigned route and bus
+            if ($trip_info) {
+                $stmt = $conn->prepare("UPDATE drivers SET assigned_route_id = ?, assigned_bus_id = ? WHERE id = ?");
+                $stmt->bind_param("iii", $trip_info['route_id'], $trip_info['bus_id'], $driver_id);
+                $stmt->execute();
+            }
+            
             // Create notification for driver
             $stmt = $conn->prepare("SELECT user_id FROM drivers WHERE id = ?");
             $stmt->bind_param("i", $driver_id);

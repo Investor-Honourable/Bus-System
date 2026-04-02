@@ -109,13 +109,6 @@ if ($method === 'PUT') {
     $data = json_decode(file_get_contents("php://input"), true);
     
     $id = $data['id'] ?? 0;
-    $name = $data['name'] ?? '';
-    $username = $data['username'] ?? null;
-    $email = $data['email'] ?? '';
-    $phone = $data['phone'] ?? null;
-    $gender = $data['gender'] ?? null;
-    $role = $data['role'] ?? 'passenger';
-    $is_active = $data['is_active'] ?? 1;
     
     if (!$id) {
         echo json_encode(['status' => 'error', 'message' => 'User ID required']);
@@ -123,10 +116,107 @@ if ($method === 'PUT') {
     }
     
     try {
-        $stmt = $conn->prepare("UPDATE users SET name = ?, username = ?, email = ?, phone = ?, gender = ?, role = ?, is_active = ? WHERE id = ?");
-        $stmt->bind_param("sssssiii", $name, $username, $email, $phone, $gender, $role, $is_active, $id);
+        // Build dynamic UPDATE query based on provided fields
+        $updates = [];
+        $types = '';
+        $values = [];
+        
+        // Check each field and add to update if provided
+        if (isset($data['name'])) {
+            $updates[] = 'name = ?';
+            $types .= 's';
+            $values[] = $data['name'];
+        }
+        if (isset($data['username'])) {
+            $updates[] = 'username = ?';
+            $types .= 's';
+            $values[] = $data['username'];
+        }
+        if (isset($data['email'])) {
+            $updates[] = 'email = ?';
+            $types .= 's';
+            $values[] = $data['email'];
+        }
+        if (isset($data['phone'])) {
+            $updates[] = 'phone = ?';
+            $types .= 's';
+            $values[] = $data['phone'];
+        }
+        if (isset($data['gender'])) {
+            $updates[] = 'gender = ?';
+            $types .= 's';
+            $values[] = $data['gender'];
+        }
+        if (isset($data['role'])) {
+            $updates[] = 'role = ?';
+            $types .= 's';
+            $values[] = $data['role'];
+        }
+        if (isset($data['is_active'])) {
+            $updates[] = 'is_active = ?';
+            $types .= 'i';
+            $values[] = $data['is_active'];
+        }
+        
+        // If no fields to update, return error
+        if (empty($updates)) {
+            echo json_encode(['status' => 'error', 'message' => 'No fields to update']);
+            exit;
+        }
+        
+        // Add ID to values
+        $types .= 'i';
+        $values[] = $id;
+        
+        // Build and execute query
+        $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$values);
         
         if ($stmt->execute()) {
+            // If role was updated, also update related records
+            if (isset($data['role'])) {
+                $new_role = $data['role'];
+                
+                // Create passenger record if role is passenger
+                if ($new_role === 'passenger') {
+                    // Check if passenger record exists
+                    $check_stmt = $conn->prepare("SELECT id FROM passengers WHERE user_id = ?");
+                    $check_stmt->bind_param("i", $id);
+                    $check_stmt->execute();
+                    $result = $check_stmt->get_result();
+                    
+                    if ($result->num_rows === 0) {
+                        // Get user info for passenger record
+                        $user_stmt = $conn->prepare("SELECT name, username, phone, gender FROM users WHERE id = ?");
+                        $user_stmt->bind_param("i", $id);
+                        $user_stmt->execute();
+                        $user_result = $user_stmt->get_result();
+                        $user_data = $user_result->fetch_assoc();
+                        
+                        $insert_stmt = $conn->prepare("INSERT INTO passengers (user_id, name, username, phone, gender) VALUES (?, ?, ?, ?, ?)");
+                        $insert_stmt->bind_param("issss", $id, $user_data['name'], $user_data['username'], $user_data['phone'], $user_data['gender']);
+                        $insert_stmt->execute();
+                    }
+                }
+                
+                // Create driver record if role is driver
+                if ($new_role === 'driver') {
+                    // Check if driver record exists
+                    $check_stmt = $conn->prepare("SELECT id FROM drivers WHERE user_id = ?");
+                    $check_stmt->bind_param("i", $id);
+                    $check_stmt->execute();
+                    $result = $check_stmt->get_result();
+                    
+                    if ($result->num_rows === 0) {
+                        $license_number = 'DL' . str_pad($id, 8, '0', STR_PAD_LEFT);
+                        $insert_stmt = $conn->prepare("INSERT INTO drivers (user_id, license_number, license_expiry, status) VALUES (?, ?, DATE_ADD(CURDATE(), INTERVAL 1 YEAR), 'active')");
+                        $insert_stmt->bind_param("is", $id, $license_number);
+                        $insert_stmt->execute();
+                    }
+                }
+            }
+            
             echo json_encode(['status' => 'success', 'message' => 'User updated successfully']);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to update user: ' . $stmt->error]);

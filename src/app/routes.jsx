@@ -23,6 +23,7 @@ import { Routes } from "./pages/admin/Routes.jsx";
 import { Trips } from "./pages/admin/Trips.jsx";
 import { Bookings as AdminBookings } from "./pages/admin/Bookings.jsx";
 import { Reports } from "./pages/admin/Reports.jsx";
+import { Passengers } from "./pages/admin/Passengers.jsx";
 import DriverDashboard from "./pages/drivers/Dashboard.jsx";
 import DriverTrips from "./pages/drivers/Trips.jsx";
 import DriverTripDetails from "./pages/drivers/TripDetails.jsx";
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
               { path: "drivers", element: <Drivers /> },
               { path: "routes", element: <Routes /> },
               { path: "trips", element: <Trips /> },
+              { path: "passengers", element: <Passengers /> },
               { path: "bookings", element: <AdminBookings /> },
               { path: "reports", element: <Reports /> },
             ],

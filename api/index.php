@@ -620,13 +620,17 @@ if ($action === 'auto_setup') {
     
     // Create sample trips
     $today = date('Y-m-d');
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $twoDaysAgo = date('Y-m-d', strtotime('-2 days'));
     $tomorrow = date('Y-m-d', strtotime('+1 day'));
     $dayAfter = date('Y-m-d', strtotime('+2 days'));
     
     $trips = [
-        [1, 1, $today, '08:00:00', '11:00:00', 3500, 50],
-        [1, 1, $today, '14:00:00', '17:00:00', 3500, 50],
-        [2, 2, $today, '09:00:00', '11:00:00', 2500, 50],
+        // Past trips (for completed bookings)
+        [1, 1, $yesterday, '08:00:00', '11:00:00', 3500, 50],
+        [1, 1, $twoDaysAgo, '14:00:00', '17:00:00', 3500, 50],
+        [2, 2, $yesterday, '09:00:00', '11:00:00', 2500, 50],
+        // Future trips (for upcoming bookings)
         [3, 3, $tomorrow, '07:00:00', '09:30:00', 3000, 45],
         [4, 4, $tomorrow, '10:00:00', '12:20:00', 2800, 55],
         [5, 5, $dayAfter, '08:30:00', '10:00:00', 2000, 40]
@@ -637,6 +641,57 @@ if ($action === 'auto_setup') {
     foreach ($trips as $trip) {
         $stmt->bind_param("iisssdi", $trip[0], $trip[1], $trip[2], $trip[3], $trip[4], $trip[5], $trip[6]);
         $stmt->execute();
+    }
+    
+    // Create sample bookings for the user
+    $user_id = $data['user_id'] ?? 0;
+    if ($user_id) {
+        // Get user info
+        $user_stmt = $conn->prepare("SELECT name, email, phone FROM users WHERE id = ?");
+        $user_stmt->bind_param("i", $user_id);
+        $user_stmt->execute();
+        $user_result = $user_stmt->get_result();
+        $user = $user_result->fetch_assoc();
+        
+        if ($user) {
+            // Create sample bookings with different statuses
+            $bookings = [
+                // Completed trips (past dates)
+                [1, $user_id, $user['name'], $user['email'], $user['phone'], '["12"]', 1, 3500, 'paid', 'card', 'PAY-' . uniqid(), 'completed'],
+                [2, $user_id, $user['name'], $user['email'], $user['phone'], '["5"]', 1, 2500, 'paid', 'mobile_money', 'PAY-' . uniqid(), 'completed'],
+                [3, $user_id, $user['name'], $user['email'], $user['phone'], '["8"]', 1, 3000, 'paid', 'card', 'PAY-' . uniqid(), 'completed'],
+                // Confirmed upcoming trips
+                [4, $user_id, $user['name'], $user['email'], $user['phone'], '["3"]', 1, 2800, 'paid', 'card', 'PAY-' . uniqid(), 'confirmed'],
+                [5, $user_id, $user['name'], $user['email'], $user['phone'], '["7"]', 1, 2000, 'paid', 'mobile_money', 'PAY-' . uniqid(), 'confirmed'],
+                // Pending trip
+                [6, $user_id, $user['name'], $user['email'], $user['phone'], '["15"]', 1, 3500, 'pending', 'card', 'PAY-' . uniqid(), 'pending'],
+            ];
+            
+            $booking_stmt = $conn->prepare("INSERT INTO bookings (trip_id, user_id, passenger_name, passenger_email, passenger_phone, seat_numbers, number_of_seats, total_price, payment_status, payment_method, payment_reference, booking_status, booking_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            
+            foreach ($bookings as $booking) {
+                $booking_ref = 'BK' . strtoupper(substr(md5(uniqid()), 0, 8));
+                $booking_stmt->bind_param("iissssidsisss", $booking[0], $booking[1], $booking[2], $booking[3], $booking[4], $booking[5], $booking[6], $booking[7], $booking[8], $booking[9], $booking[10], $booking[11], $booking_ref);
+                $booking_stmt->execute();
+            }
+            
+            // Create tickets for confirmed/completed bookings
+            $ticket_stmt = $conn->prepare("INSERT INTO tickets (ticket_code, booking_id, trip_id, user_id, seat_number, status) VALUES (?, ?, ?, ?, ?, 'valid')");
+            
+            // Get the booking IDs we just created
+            $booking_ids_stmt = $conn->prepare("SELECT id, seat_numbers FROM bookings WHERE user_id = ? ORDER BY id DESC LIMIT 6");
+            $booking_ids_stmt->bind_param("i", $user_id);
+            $booking_ids_stmt->execute();
+            $booking_ids_result = $booking_ids_stmt->get_result();
+            
+            while ($booking_row = $booking_ids_result->fetch_assoc()) {
+                $ticket_code = 'TKT' . strtoupper(substr(md5(uniqid()), 0, 10));
+                $seats = json_decode($booking_row['seat_numbers'], true);
+                $seat = $seats[0] ?? '1';
+                $ticket_stmt->bind_param("siiis", $ticket_code, $booking_row['id'], $booking_row['id'], $user_id, $seat);
+                $ticket_stmt->execute();
+            }
+        }
     }
     
     echo json_encode(['status' => 'success', 'setup' => true, 'message' => 'Sample data created successfully']);
@@ -654,8 +709,8 @@ if ($action === 'get_stats') {
     
     error_log("Getting stats for user_id: $user_id");
     
-    // Get completed trips (confirmed bookings are considered completed for stats)
-    $stmt = $conn->prepare("SELECT COUNT(*) as completed_trips FROM bookings WHERE user_id = ? AND booking_status IN ('completed', 'confirmed')");
+    // Get completed trips (only count trips that have already passed)
+    $stmt = $conn->prepare("SELECT COUNT(*) as completed_trips FROM bookings b JOIN trips t ON b.trip_id = t.id WHERE b.user_id = ? AND b.booking_status IN ('completed', 'confirmed') AND t.departure_date < CURDATE()");
     if (!$stmt) {
         error_log("Stats query 1 failed: " . $conn->error);
         echo json_encode(['status' => 'error', 'message' => 'Database error']);
@@ -668,7 +723,7 @@ if ($action === 'get_stats') {
     error_log("Completed trips: " . json_encode($completed));
     
     // Get upcoming trips
-    $stmt = $conn->prepare("SELECT COUNT(*) as upcoming_trips FROM bookings WHERE user_id = ? AND booking_status IN ('confirmed', 'pending') AND departure_date >= CURDATE()");
+    $stmt = $conn->prepare("SELECT COUNT(*) as upcoming_trips FROM bookings b JOIN trips t ON b.trip_id = t.id WHERE b.user_id = ? AND b.booking_status IN ('confirmed', 'pending') AND t.departure_date >= CURDATE()");
     if (!$stmt) {
         error_log("Stats query 2 failed: " . $conn->error);
         echo json_encode(['status' => 'error', 'message' => 'Database error']);
@@ -680,8 +735,8 @@ if ($action === 'get_stats') {
     $upcoming = $result->fetch_assoc();
     error_log("Upcoming trips: " . json_encode($upcoming));
     
-    // Get total spent (confirmed bookings are considered spent)
-    $stmt = $conn->prepare("SELECT COALESCE(SUM(total_price), 0) as total_spent FROM bookings WHERE user_id = ? AND booking_status IN ('completed', 'confirmed')");
+    // Get total spent (count all valid bookings - both paid and pending, excluding cancelled)
+    $stmt = $conn->prepare("SELECT COALESCE(SUM(b.total_price), 0) as total_spent FROM bookings b WHERE b.user_id = ? AND b.payment_status IN ('paid', 'pending') AND b.booking_status != 'cancelled'");
     if (!$stmt) {
         error_log("Stats query 3 failed: " . $conn->error);
         echo json_encode(['status' => 'error', 'message' => 'Database error']);
@@ -693,8 +748,8 @@ if ($action === 'get_stats') {
     $spent = $result->fetch_assoc();
     error_log("Total spent: " . json_encode($spent));
     
-    // Get favorite route (confirmed bookings are considered for favorite route)
-    $stmt = $conn->prepare("SELECT r.origin, r.destination, COUNT(*) as trip_count FROM bookings b JOIN trips t ON b.trip_id = t.id JOIN routes r ON t.route_id = r.id WHERE b.user_id = ? AND b.booking_status IN ('completed', 'confirmed') GROUP BY r.id ORDER BY trip_count DESC LIMIT 1");
+    // Get favorite route (count all valid bookings - both paid and pending, excluding cancelled)
+    $stmt = $conn->prepare("SELECT r.origin, r.destination, COUNT(*) as trip_count FROM bookings b JOIN trips t ON b.trip_id = t.id JOIN routes r ON t.route_id = r.id WHERE b.user_id = ? AND b.payment_status IN ('paid', 'pending') AND b.booking_status != 'cancelled' GROUP BY r.id ORDER BY trip_count DESC LIMIT 1");
     if (!$stmt) {
         error_log("Stats query 4 failed: " . $conn->error);
         echo json_encode(['status' => 'error', 'message' => 'Database error']);

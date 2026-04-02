@@ -125,7 +125,14 @@
     "search": "Search...",
     "notifications": "Notifications",
     "profile": "Profile",
-    "logout": "Logout"
+    "logout": "Logout",
+    "admin": "Admin",
+    "driver": "Driver",
+    "markAllAsRead": "Mark all as read",
+    "accountSettings": "Account Settings",
+    "upgradeNow": "Upgrade Now",
+    "premium": "Premium",
+    "visitingNewRides": "Visiting new rides"
   },
   "admin": {
     "dashboard": "Dashboard",

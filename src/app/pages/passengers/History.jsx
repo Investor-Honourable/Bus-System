@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select.jsx";
+import { toast } from "sonner";
 
 export function History() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,16 +29,7 @@ export function History() {
       const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       const userId = currentUser.id || 0;
 
-      // Fix any missing tickets first
-      try {
-        await fetch("/api/index.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "fix_tickets", user_id: userId }),
-        });
-      } catch (e) {
-        // Continue anyway
-      }
+
 
       const response = await fetch("/api/index.php", {
         method: "POST",
@@ -48,7 +40,7 @@ export function History() {
       const data = await response.json();
 
       if (data.status === "success" && data.bookings) {
-        // Show all bookings where departure date has passed (or any booking with confirmed/completed/cancelled status)
+        // Show only past trips (completed, cancelled, or trips that have already departed)
         const pastTrips = data.bookings
           .filter(b => {
             const tripDate = new Date(b.departure_date);
@@ -56,8 +48,6 @@ export function History() {
             // Include: completed, cancelled, OR trips that have already departed
             return b.booking_status === 'completed' || 
                    b.booking_status === 'cancelled' || 
-                   b.booking_status === 'confirmed' ||
-                   b.booking_status === 'pending' ||
                    tripDate < now;
           })
           .map((b) => ({
@@ -301,7 +291,7 @@ export function History() {
 
               {trip.status === "completed" && (
                 <div className="pt-4 border-t border-gray-100">
-                  <Button variant="outline" size="sm" onClick={() => alert("Rating feature coming soon!")}>
+                  <Button variant="outline" size="sm" onClick={() => toast.info("Rating feature coming soon!")}>
                     Rate this trip
                   </Button>
                 </div>

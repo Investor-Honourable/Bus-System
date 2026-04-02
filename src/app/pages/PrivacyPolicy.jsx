@@ -102,8 +102,8 @@ export function PrivacyPolicy() {
                 If you have questions about this Privacy Policy or our data practices, please contact us at:
               </p>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-700"><strong>Email:</strong> privacy@camtransit.com</p>
-                <p className="text-gray-700"><strong>Phone:</strong> +237 6XX XXX XXX</p>
+                <p className="text-gray-700"><strong>Email:</strong> camtransit@gmail.com</p>
+                <p className="text-gray-700"><strong>Phone:</strong> +237 683508162</p>
                 <p className="text-gray-700"><strong>Address:</strong> Douala, Cameroon</p>
               </div>
             </section>

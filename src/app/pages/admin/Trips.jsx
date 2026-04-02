@@ -68,16 +68,24 @@ export function Trips() {
       const routesData = await routesRes.json();
       const busesData = await busesRes.json();
       
-      if (schedulesData.data) {
+      // Handle different API response formats
+      const tripsList = schedulesData.trips || schedulesData.data || [];
+      const routesList = routesData.routes || routesData.data || [];
+      const busesList = busesData.buses || busesData.data || [];
+      
+      if (tripsList.length > 0) {
         // Map trip_id to schedule_id for compatibility
-        const mappedData = schedulesData.data.map(trip => ({
+        const mappedData = tripsList.map(trip => ({
           ...trip,
-          schedule_id: trip.trip_id || trip.schedule_id
+          schedule_id: trip.id || trip.trip_id || trip.schedule_id
         }));
         setSchedules(mappedData);
+      } else {
+        setSchedules([]);
       }
-      if (routesData.data) setRoutes(routesData.data);
-      if (busesData.data) setBuses(busesData.data);
+      
+      if (routesList.length > 0) setRoutes(routesList);
+      if (busesList.length > 0) setBuses(busesList);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -179,8 +187,8 @@ export function Trips() {
         alert("Trip created successfully!");
         
         // Get route name for notification
-        const routeName = routes.find(r => r.id === parseInt(newSchedule.route_id))?.start_point + ' - ' + 
-                         routes.find(r => r.id === parseInt(newSchedule.route_id))?.end_point || 'New route';
+        const routeName = routes.find(r => r.id === parseInt(newSchedule.route_id))?.origin + ' - ' + 
+                         routes.find(r => r.id === parseInt(newSchedule.route_id))?.destination || 'New route';
         
         // Create notification for admin (API already handles this)
         // Notifications are handled by the API
@@ -221,13 +229,24 @@ export function Trips() {
   const updateSchedule = async () => {
     if (!selectedTrip) return;
     try {
+      const tripId = selectedTrip.id || selectedTrip.trip_id || selectedTrip.schedule_id;
       const response = await fetch("/api/dashboards/admin/schedules.php", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(selectedTrip),
+        body: JSON.stringify({
+          id: tripId,
+          bus_id: selectedTrip.bus_id,
+          route_id: selectedTrip.route_id,
+          driver_id: selectedTrip.driver_id,
+          departure_date: selectedTrip.date,
+          departure_time: selectedTrip.departure_time,
+          arrival_time: selectedTrip.arrival_time,
+          price: selectedTrip.price,
+          status: selectedTrip.status
+        }),
       });
       const data = await response.json();
-      if (data.message) {
+      if (data.status === 'success' || data.message) {
         setIsEditDialogOpen(false);
         setSelectedTrip(null);
         fetchData();
@@ -240,13 +259,14 @@ export function Trips() {
   const cancelTrip = async () => {
     if (!selectedTrip) return;
     try {
+      const tripId = selectedTrip.id || selectedTrip.trip_id || selectedTrip.schedule_id;
       const response = await fetch("/api/dashboards/admin/schedules.php", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schedule_id: selectedTrip.trip_id || selectedTrip.schedule_id, status: "cancelled" }),
+        body: JSON.stringify({ id: tripId, status: "cancelled" }),
       });
       const data = await response.json();
-      if (data.message) {
+      if (data.status === 'success' || data.message) {
         setIsCancelDialogOpen(false);
         setSelectedTrip(null);
         fetchData();
@@ -259,14 +279,14 @@ export function Trips() {
   const deleteTrip = async () => {
     if (!selectedTrip) return;
     try {
-      const tripId = selectedTrip.trip_id || selectedTrip.schedule_id;
+      const tripId = selectedTrip.id || selectedTrip.trip_id || selectedTrip.schedule_id;
       const response = await fetch("/api/dashboards/admin/schedules.php", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schedule_id: tripId }),
+        body: JSON.stringify({ id: tripId }),
       });
       const data = await response.json();
-      if (data.message || data.success) {
+      if (data.status === 'success' || data.message) {
         setIsDeleteDialogOpen(false);
         setSelectedTrip(null);
         fetchData();
@@ -353,12 +373,12 @@ export function Trips() {
   };
 
   const filteredTrips = schedules.filter(trip => {
-    const matchesSearch = trip.start_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      trip.end_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = trip.origin?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      trip.destination?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       trip.bus_number?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || trip.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }).slice(0, 50);
 
   const exportToCSV = () => {
     if (filteredTrips.length === 0) return;
@@ -368,9 +388,9 @@ export function Trips() {
       headers.join(','),
       ...filteredTrips.map(trip => [
         trip.schedule_id,
-        `${trip.start_point} → ${trip.end_point}`,
+        `${trip.origin} → ${trip.destination}`,
         trip.bus_number,
-        trip.date,
+        trip.departure_date,
         trip.departure_time,
         trip.arrival_time,
         trip.price || '',
@@ -441,7 +461,7 @@ export function Trips() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Trips</p>
-                <p className="text-2xl font-bold">{schedules.length}</p>
+                <p className="text-2xl font-bold">{filteredTrips.length}</p>
               </div>
               <Calendar className="w-8 h-8 text-blue-600" />
             </div>
@@ -452,7 +472,7 @@ export function Trips() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Scheduled</p>
-                <p className="text-2xl font-bold">{schedules.filter(t => t.status === "scheduled").length}</p>
+                <p className="text-2xl font-bold">{filteredTrips.filter(t => t.status === "scheduled").length}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
@@ -463,7 +483,7 @@ export function Trips() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold">{schedules.filter(t => t.status === "completed").length}</p>
+                <p className="text-2xl font-bold">{filteredTrips.filter(t => t.status === "completed").length}</p>
               </div>
               <MapPin className="w-8 h-8 text-green-600" />
             </div>
@@ -474,7 +494,7 @@ export function Trips() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Cancelled</p>
-                <p className="text-2xl font-bold">{schedules.filter(t => t.status === "cancelled").length}</p>
+                <p className="text-2xl font-bold">{filteredTrips.filter(t => t.status === "cancelled").length}</p>
               </div>
               <XCircle className="w-8 h-8 text-red-600" />
             </div>
@@ -538,9 +558,9 @@ export function Trips() {
                 {filteredTrips.map((trip) => (
                   <tr key={trip.schedule_id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">#{trip.schedule_id}</td>
-                    <td className="py-3 px-4">{trip.start_point} → {trip.end_point}</td>
+                    <td className="py-3 px-4">{trip.origin} → {trip.destination}</td>
                     <td className="py-3 px-4">{trip.bus_number}</td>
-                    <td className="py-3 px-4">{trip.date}</td>
+                    <td className="py-3 px-4">{trip.departure_date}</td>
                     <td className="py-3 px-4">{trip.departure_time}</td>
                     <td className="py-3 px-4">{trip.arrival_time}</td>
                     <td className="py-3 px-4 font-medium">{trip.price ? `${parseFloat(trip.price).toLocaleString()} XAF` : '-'}</td>
@@ -635,7 +655,7 @@ export function Trips() {
                   <SelectContent>
                     {routes.map((route) => (
                       <SelectItem key={route.id} value={String(route.id)}>
-                        {route.start_point} → {route.end_point}
+                        {route.origin} → {route.destination}
                       </SelectItem>
                     ))}
                   </SelectContent>

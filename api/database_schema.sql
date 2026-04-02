@@ -349,9 +349,9 @@ CREATE TABLE IF NOT EXISTS reviews (
 -- Insert sample users (passwords: admin123, driver123, passenger123)
 INSERT INTO users (name, username, email, phone, gender, password, role) VALUES
 ('Admin User', 'admin', 'admin@camtransit.com', '237600000000', 'male', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
-('John Driver', 'jdriver', 'driver@camtransit.com', '237600000001', 'male', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'driver'),
+('John Driver', 'johndriver', 'john.driver@camtransit.com', '237600000001', 'male', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'driver'),
 ('Alice Passenger', 'apassenger', 'passenger@camtransit.com', '237600000002', 'female', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'passenger'),
-('Marie Driver', 'mdriver', 'marie.driver@camtransit.com', '237600000003', 'female', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'driver'),
+('Marie Driver', 'mariedriver', 'marie.driver@camtransit.com', '237600000003', 'female', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'driver'),
 ('Bob Passenger', 'bpassenger', 'bob.passenger@camtransit.com', '237600000004', 'male', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'passenger')
 ON DUPLICATE KEY UPDATE email = email;
 

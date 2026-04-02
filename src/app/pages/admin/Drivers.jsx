@@ -174,13 +174,20 @@ export function Drivers() {
     setIsSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/controller/signup.php", {
+      const response = await fetch("/api/dashboards/admin/drivers.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newDriver, role: "driver" }),
+        body: JSON.stringify({ 
+          name: newDriver.username,
+          email: newDriver.email,
+          password: newDriver.password,
+          phone: newDriver.phone,
+          license_number: newDriver.license_number || 'DL' + Date.now(),
+          license_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }),
       });
       const data = await response.json();
-      if (data.success || data.message) {
+      if (data.status === 'success' || data.message) {
         setNewDriver({ username: "", email: "", password: "", phone: "", license_number: "" });
         setIsAddDialogOpen(false);
         fetchData();
@@ -254,8 +261,18 @@ export function Drivers() {
   };
 
   const assignDriver = async () => {
-    if (!selectedDriver || !assignment.route_id || !assignment.bus_id) {
-      setError("Please select both route and bus");
+    if (!selectedDriver) {
+      setError("No driver selected");
+      return;
+    }
+    
+    if (!assignment.route_id) {
+      setError("Please select a route");
+      return;
+    }
+    
+    if (!assignment.bus_id) {
+      setError("Please select a bus");
       return;
     }
 
@@ -267,14 +284,14 @@ export function Drivers() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           id: selectedDriver.id,
-          assigned_route_id: assignment.route_id,
-          assigned_bus_id: assignment.bus_id,
+          assigned_route_id: parseInt(assignment.route_id),
+          assigned_bus_id: parseInt(assignment.bus_id),
           status: selectedDriver.status || 'active',
           license_number: selectedDriver.license_number || 'DL00000000'
         }),
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.success || data.status === 'success') {
         setIsAssignDialogOpen(false);
         setSelectedDriver(null);
         setAssignment({ route_id: "", bus_id: "" });
@@ -284,7 +301,7 @@ export function Drivers() {
       }
     } catch (err) {
       console.error("Error assigning driver:", err);
-      setError("Failed to assign driver");
+      setError("Failed to assign driver. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -306,8 +323,8 @@ export function Drivers() {
     
     setSelectedDriver({ 
       ...driver,
-      currentRoute: assignedRoute,
-      currentBus: assignedBus
+      currentRoute: assignedRoute || null,
+      currentBus: assignedBus || null
     });
     setAssignment({ 
       route_id: driver.assigned_route_id ? String(driver.assigned_route_id) : "", 
@@ -325,12 +342,19 @@ export function Drivers() {
 
   const getRouteName = (routeId) => {
     const route = routes.find(r => String(r.id) === String(routeId));
-    return route ? `${route.start_point} → ${route.end_point}` : null;
+    if (!route) return null;
+    // Support both field naming conventions
+    const origin = route.origin || route.start_point || 'Unknown';
+    const destination = route.destination || route.end_point || 'Unknown';
+    return `${origin} → ${destination}`;
   };
 
   const getBusInfo = (busId) => {
     const bus = buses.find(b => String(b.id) === String(busId));
-    return bus ? `${bus.bus_number} (${bus.capacity} seats)` : null;
+    if (!bus) return null;
+    const busNumber = bus.bus_number || 'Unknown';
+    const capacity = bus.capacity || 'N/A';
+    return `${busNumber} (${capacity} seats)`;
   };
 
   const filteredDrivers = drivers.filter(driver => 
@@ -345,6 +369,21 @@ export function Drivers() {
       case "inactive": return "bg-gray-100 text-gray-700";
       default: return "bg-gray-100 text-gray-700";
     }
+  };
+
+  const formatRouteDisplay = (route) => {
+    if (!route) return null;
+    const origin = route.origin || route.start_point || 'Unknown';
+    const destination = route.destination || route.end_point || 'Unknown';
+    const routeCode = route.route_code ? ` (${route.route_code})` : '';
+    return `${origin} → ${destination}${routeCode}`;
+  };
+
+  const formatBusDisplay = (bus) => {
+    if (!bus) return null;
+    const busNumber = bus.bus_number || 'Unknown';
+    const capacity = bus.capacity || 'N/A';
+    return `${busNumber} (${capacity} seats)`;
   };
 
   if (isLoading) {
@@ -489,13 +528,13 @@ export function Drivers() {
                   {driver.assigned_route_id && (
                     <div className="flex items-center gap-2 text-sm text-green-600">
                       <MapPin className="w-4 h-4" />
-                      Route: {getRouteName(driver.assigned_route_id)}
+                      <span className="truncate">Route: {getRouteName(driver.assigned_route_id) || `ID: ${driver.assigned_route_id}`}</span>
                     </div>
                   )}
                   {driver.assigned_bus_id && (
                     <div className="flex items-center gap-2 text-sm text-purple-600">
                       <Bus className="w-4 h-4" />
-                      Bus: {getBusInfo(driver.assigned_bus_id)}
+                      <span className="truncate">Bus: {getBusInfo(driver.assigned_bus_id) || `ID: ${driver.assigned_bus_id}`}</span>
                     </div>
                   )}
                   {driver.todayTrips > 0 && (
@@ -699,78 +738,179 @@ export function Drivers() {
 
       {/* Assign Driver Dialog */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Assign Driver</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-blue-600" />
+              Assign Driver to Route & Bus
+            </DialogTitle>
           </DialogHeader>
           {selectedDriver && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-5 py-4">
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {error}
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
-              <div className="p-3 bg-blue-50 rounded-lg space-y-2">
-                <p className="text-sm font-medium text-blue-900">Driver: {selectedDriver.username || selectedDriver.name}</p>
-                {selectedDriver.currentRoute && (
-                  <p className="text-xs text-blue-700">Current Route: {selectedDriver.currentRoute.start_point} → {selectedDriver.currentRoute.end_point}</p>
-                )}
-                {selectedDriver.currentBus && (
-                  <p className="text-xs text-blue-700">Current Bus: {selectedDriver.currentBus.bus_number} ({selectedDriver.currentBus.capacity} seats)</p>
-                )}
-                {!selectedDriver.currentRoute && !selectedDriver.currentBus && (
-                  <p className="text-xs text-orange-700">Currently unassigned</p>
-                )}
+              
+              {/* Driver Info Card */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <UserCog className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-blue-900">{selectedDriver.username || selectedDriver.name}</p>
+                    <p className="text-xs text-blue-600">Driver ID: {selectedDriver.id}</p>
+                  </div>
+                </div>
+                
+                {/* Current Assignment Status */}
+                <div className="mt-3 pt-3 border-t border-blue-100">
+                  <p className="text-xs font-medium text-blue-700 mb-2">Current Assignment:</p>
+                  {selectedDriver.currentRoute ? (
+                    <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-md">
+                      <MapPin className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{formatRouteDisplay(selectedDriver.currentRoute)}</span>
+                    </div>
+                  ) : selectedDriver.currentBus ? (
+                    <div className="flex items-center gap-2 text-sm text-purple-700 bg-purple-50 px-3 py-2 rounded-md">
+                      <Bus className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{formatBusDisplay(selectedDriver.currentBus)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-orange-700 bg-orange-50 px-3 py-2 rounded-md">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>Currently unassigned</span>
+                    </div>
+                  )}
+                </div>
               </div>
+              
+              {/* Route Selection */}
               <div className="space-y-2">
-                <Label>Select Route *</Label>
+                <Label htmlFor="assign-route" className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-green-600" />
+                  Select Route *
+                </Label>
                 <Select
                   value={assignment.route_id}
                   onValueChange={(value) => setAssignment({ ...assignment, route_id: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a route" />
+                  <SelectTrigger id="assign-route" className="w-full">
+                    <SelectValue placeholder="Choose a route for this driver" />
                   </SelectTrigger>
                   <SelectContent>
-                    {routes.map((route) => (
-                      <SelectItem key={route.id} value={String(route.id)}>
-                        {route.start_point} → {route.end_point}
+                    {routes.length === 0 ? (
+                      <SelectItem value="no-routes" disabled>
+                        No routes available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      routes.map((route) => {
+                        const origin = route.origin || route.start_point || 'Unknown';
+                        const destination = route.destination || route.end_point || 'Unknown';
+                        const routeCode = route.route_code ? ` (${route.route_code})` : '';
+                        return (
+                          <SelectItem key={route.id} value={String(route.id)}>
+                            {origin} → {destination}{routeCode}
+                          </SelectItem>
+                        );
+                      })
+                    )}
                   </SelectContent>
                 </Select>
+                {assignment.route_id && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                    Route selected
+                  </p>
+                )}
               </div>
+              
+              {/* Bus Selection */}
               <div className="space-y-2">
-                <Label>Select Bus *</Label>
+                <Label htmlFor="assign-bus" className="text-sm font-medium flex items-center gap-2">
+                  <Bus className="w-4 h-4 text-purple-600" />
+                  Select Bus *
+                </Label>
                 <Select
                   value={assignment.bus_id}
                   onValueChange={(value) => setAssignment({ ...assignment, bus_id: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a bus" />
+                  <SelectTrigger id="assign-bus" className="w-full">
+                    <SelectValue placeholder="Choose a bus for this driver" />
                   </SelectTrigger>
                   <SelectContent>
-                    {buses.map((bus) => (
-                      <SelectItem key={bus.id} value={String(bus.id)}>
-                        {bus.bus_number} ({bus.capacity} seats)
+                    {buses.length === 0 ? (
+                      <SelectItem value="no-buses" disabled>
+                        No buses available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      buses.map((bus) => (
+                        <SelectItem key={bus.id} value={String(bus.id)}>
+                          {bus.bus_number} ({bus.capacity} seats)
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
+                {assignment.bus_id && (
+                  <p className="text-xs text-purple-600 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 bg-purple-500 rounded-full"></span>
+                    Bus selected
+                  </p>
+                )}
               </div>
+              
+              {/* Assignment Summary */}
+              {assignment.route_id && assignment.bus_id && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm font-medium text-green-800 mb-2">Assignment Summary:</p>
+                  <div className="space-y-1 text-sm text-green-700">
+                    <p className="flex items-center gap-2">
+                      <UserCog className="w-3 h-3" />
+                      <span>Driver: {selectedDriver.username || selectedDriver.name}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <MapPin className="w-3 h-3" />
+                      <span>Route: {getRouteName(assignment.route_id) || 'Selected'}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Bus className="w-3 h-3" />
+                      <span>Bus: {getBusInfo(assignment.bus_id) || 'Selected'}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)} disabled={isSaving}>Cancel</Button>
-            <Button onClick={assignDriver} disabled={isSaving}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsAssignDialogOpen(false);
+                setAssignment({ route_id: "", bus_id: "" });
+              }} 
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={assignDriver} 
+              disabled={isSaving || !assignment.route_id || !assignment.bus_id}
+              className="gap-2"
+            >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Assigning...
                 </>
               ) : (
-                "Assign Driver"
+                <>
+                  <MapPin className="w-4 h-4" />
+                  Assign Driver
+                </>
               )}
             </Button>
           </DialogFooter>

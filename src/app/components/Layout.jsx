@@ -160,12 +160,12 @@ export function Layout() {
 
   // Add admin link if user is admin
   if (currentUser?.role === "admin") {
-    navItems.push({ to: "/dashboard/admin", icon: Shield, label: "Admin", end: false });
+    navItems.push({ to: "/dashboard/admin", icon: Shield, label: t('nav.admin'), end: false });
   }
 
   // Add driver link if user is driver
   if (currentUser?.role === "driver") {
-    navItems.push({ to: "/dashboard/driver", icon: Bus, label: "Driver", end: false });
+    navItems.push({ to: "/dashboard/driver", icon: Bus, label: t('nav.driver'), end: false });
   }
 
   // Mobile sidebar content
@@ -210,10 +210,10 @@ export function Layout() {
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
           <div className="relative">
             <Bus className="w-12 h-12 mb-3 opacity-90" />
-            <p className="text-sm font-medium mb-1">Visiting new rides</p>
-            <p className="text-xs opacity-90 mb-3">Premium</p>
+            <p className="text-sm font-medium mb-1">{t('nav.visitingNewRides')}</p>
+            <p className="text-xs opacity-90 mb-3">{t('nav.premium')}</p>
             <Button size="sm" className="w-full bg-white text-blue-600 hover:bg-gray-100">
-              Upgrade Now
+              {t('nav.upgradeNow')}
             </Button>
           </div>
         </div>
@@ -226,23 +226,23 @@ export function Layout() {
           className="flex items-center gap-3 px-4 py-2 sm:py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg w-full transition-colors"
         >
           <HelpCircle className="w-5 h-5" />
-          <span className="text-sm font-medium">Help & support</span>
+          <span className="text-sm font-medium">{t('nav.help')}</span>
         </button>
         <button 
           onClick={() => { navigate("/dashboard/settings"); onItemClick(); }}
           className="flex items-center gap-3 px-4 py-2 sm:py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg w-full transition-colors"
         >
           <Settings className="w-5 h-5" />
-          <span className="text-sm font-medium">Settings</span>
+          <span className="text-sm font-medium">{t('nav.settings')}</span>
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col">
+      <aside className="hidden lg:flex w-64 xl:w-72 bg-white border-r border-gray-200 flex-col flex-shrink-0">
         <SidebarContent onItemClick={() => {}} />
       </aside>
 
@@ -279,34 +279,34 @@ export function Layout() {
             </button>
 
             {/* Search bar - visible on all screens */}
-            <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-xl mx-2 sm:mx-4">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-xl mx-1 sm:mx-2 md:mx-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                 <Input 
                   placeholder={t('nav.search')}
-                  className="pl-10 bg-gray-50 border-gray-200 text-sm h-10"
+                  className="pl-8 sm:pl-10 bg-gray-50 border-gray-200 text-xs sm:text-sm h-8 sm:h-9 md:h-10"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
               {/* Add funds button - hidden on mobile */}
-              <Button className="hidden sm:flex gap-2 bg-blue-600 hover:bg-blue-700 h-10">
-                <Plus className="w-4 h-4" />
+              <Button className="hidden md:flex gap-2 bg-blue-600 hover:bg-blue-700 h-8 md:h-9 lg:h-10 text-xs md:text-sm">
+                <Plus className="w-3 h-3 md:w-4 md:h-4" />
                 <span className="hidden lg:inline">+ 500pr</span>
               </Button>
               
               {/* Mobile add button */}
-              <button className="sm:hidden p-2 bg-blue-600 text-white rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
-                <Plus className="w-5 h-5" />
+              <button className="md:hidden p-1.5 sm:p-2 bg-blue-600 text-white rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg relative touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-gray-600" />
+                  <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg relative touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
+                    <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">{unreadCount}</span>
+                      <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full text-white text-[10px] sm:text-xs flex items-center justify-center">{unreadCount}</span>
                     )}
                   </button>
                 </PopoverTrigger>
@@ -342,7 +342,7 @@ export function Layout() {
                       onClick={markAllAsRead}
                       disabled={unreadCount === 0}
                     >
-                      Mark all as read
+                      {t('nav.markAllAsRead')}
                     </Button>
                   </div>
                 </PopoverContent>

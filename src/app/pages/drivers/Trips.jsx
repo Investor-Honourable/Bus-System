@@ -27,7 +27,7 @@ export default function DriverTrips() {
       const data = await response.json();
       
       if (data.status === "success") {
-        setTrips(data.data || []);
+        setTrips(data.trips || data.data || []);
       }
     } catch (error) {
       console.error("Error fetching trips:", error);
@@ -171,11 +171,16 @@ export default function DriverTrips() {
                       </td>
                       <td className="py-3 px-4 text-gray-600">{formatDate(trip.departure_date)}</td>
                       <td className="py-3 px-4 text-gray-600">{formatTime(trip.departure_time)}</td>
-                      <td className="py-3 px-4 text-gray-600">{trip.bus_number}</td>
+                      <td className="py-3 px-4 text-gray-600">
+                        <div className="flex flex-col">
+                          <span>{trip.bus_number}</span>
+                          <span className="text-xs text-gray-400">{trip.total_seats || trip.available_seats || 'N/A'} seats</span>
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-gray-600">
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
-                          {trip.booked_seats || 0}/{trip.available_seats}
+                          {trip.booked_seats || 0}/{trip.available_seats || trip.total_seats || 'N/A'}
                         </div>
                       </td>
                       <td className="py-3 px-4">

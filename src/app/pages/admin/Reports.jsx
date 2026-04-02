@@ -45,10 +45,10 @@ export function Reports() {
       const schedulesData = await schedulesRes.json();
 
       const users = usersData.users || usersData.data || [];
-      const buses = busesData.data || [];
-      const routes = routesData.data || [];
+      const buses = busesData.buses || busesData.data || [];
+      const routes = routesData.routes || routesData.data || [];
       const bookings = bookingsData.bookings || bookingsData.data || [];
-      const schedules = schedulesData.data || [];
+      const schedules = schedulesData.trips || schedulesData.data || [];
 
       // Calculate most popular route from bookings
       const routeCounts = {};
@@ -124,7 +124,7 @@ export function Reports() {
 
       setStats({
         totalBuses: buses.length,
-        totalTrips: schedules.length,
+        totalTrips: schedules.slice(0, 50).length,
         totalPassengers: passengers.length,
         totalRevenue: totalRevenue,
         mostPopularRoute: mostPopularRoute,

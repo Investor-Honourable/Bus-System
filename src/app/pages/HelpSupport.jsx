@@ -182,11 +182,11 @@ const faqCategories = [
 
 // Contact Information
 const contactInfo = {
-  phone: "+237 6XX XXX XXX",
-  email: "support@camtransit.com",
+  phone: "+237 683508162",
+  email: "camtransit@gmail.com",
   location: "Douala, Cameroon",
   workingHours: "Mon-Sat: 7AM - 8PM, Sun: 9AM - 5PM",
-  emergency: "+237 6XX XXX XXX"
+  emergency: "+237 683508162"
 };
 
 // Ticket Categories

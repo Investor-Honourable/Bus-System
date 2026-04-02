@@ -15,9 +15,17 @@ export default function DriverDashboard() {
   const [todayTrips, setTodayTrips] = useState([]);
   const [nextTrip, setNextTrip] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [assignment, setAssignment] = useState(null);
 
   useEffect(() => {
     fetchDriverData();
+    
+    // Auto-refresh every 30 seconds for new assignments
+    const interval = setInterval(() => {
+      fetchDriverData();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDriverData = async () => {
@@ -33,7 +41,12 @@ export default function DriverDashboard() {
       const data = await response.json();
       
       if (data.status === "success") {
-        const trips = data.data || [];
+        const trips = data.trips || data.data || [];
+        
+        // Store assignment info if provided
+        if (data.assignment) {
+          setAssignment(data.assignment);
+        }
         
         // Use local date instead of UTC
         const today = new Date();
@@ -196,7 +209,7 @@ export default function DriverDashboard() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Bus className="w-4 h-4" />
-                    {nextTrip.bus_number}
+                    {nextTrip.bus_number} ({nextTrip.total_seats || 'N/A'} seats)
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="w-4 h-4" />
@@ -253,7 +266,7 @@ export default function DriverDashboard() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3" />
-                          {trip.booked_seats || 0}/{trip.available_seats}
+                          {trip.booked_seats || 0}/{trip.available_seats || trip.total_seats || 'N/A'}
                         </span>
                         <span className="flex items-center gap-1">
                           {trip.bus_number}

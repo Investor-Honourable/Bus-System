@@ -123,7 +123,7 @@ export function Settings() {
         return;
       }
       
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get", user_id: user.id })
@@ -182,7 +182,7 @@ export function Settings() {
     setError("");
     
     try {
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -232,7 +232,7 @@ export function Settings() {
     setIsSaving(true);
     
     try {
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -264,7 +264,7 @@ export function Settings() {
     setSettings(newSettings);
     
     try {
-      await fetch(`${API_URL}/settings.php`, {
+      await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -284,7 +284,7 @@ export function Settings() {
     setSettings(prev => ({ ...prev, two_factor_enabled: newValue }));
     
     try {
-      await fetch(`${API_URL}/settings.php`, {
+      await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -302,7 +302,7 @@ export function Settings() {
     if (!window.confirm("Are you sure you want to logout from all devices?")) return;
     
     try {
-      await fetch(`${API_URL}/settings.php`, {
+      await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -328,7 +328,7 @@ export function Settings() {
     setIsSaving(true);
     
     try {
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -358,7 +358,7 @@ export function Settings() {
     if (!window.confirm("Are you sure you want to remove this payment method?")) return;
     
     try {
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -382,7 +382,7 @@ export function Settings() {
 
   const handleSetDefault = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -411,7 +411,7 @@ export function Settings() {
     if (!window.confirm("This is your final warning. Your account will be deleted forever. Continue?")) return;
     
     try {
-      const response = await fetch(`${API_URL}/settings.php`, {
+      const response = await fetch(apiEndpoint('/settings.php'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete_account", user_id: getStoredUser()?.id })

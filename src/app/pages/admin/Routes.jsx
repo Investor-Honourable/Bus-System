@@ -21,7 +21,7 @@ export function Routes() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [newRoute, setNewRoute] = useState({ start_point: "", end_point: "", distance: "", duration: "" });
+  const [newRoute, setNewRoute] = useState({ origin: "", destination: "", distance_km: "", duration_minutes: "" });
 
   useEffect(() => {
     fetchRoutes();
@@ -48,7 +48,7 @@ export function Routes() {
   };
 
   const createRoute = async () => {
-    if (!newRoute.start_point || !newRoute.end_point) return;
+    if (!newRoute.origin || !newRoute.destination) return;
     try {
       const response = await fetch("/api/dashboards/admin/routes.php", {
         method: "POST",
@@ -57,7 +57,7 @@ export function Routes() {
       });
       const data = await response.json();
       if (data.message) {
-        setNewRoute({ start_point: "", end_point: "", distance: "", duration: "" });
+        setNewRoute({ origin: "", destination: "", distance_km: "", duration_minutes: "" });
         setIsAddDialogOpen(false);
         fetchRoutes();
       }
@@ -115,8 +115,8 @@ export function Routes() {
   };
 
   const filteredRoutes = routes.filter(route => 
-    route.start_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    route.end_point?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    route.origin?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    route.destination?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     route.route_code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -129,10 +129,10 @@ export function Routes() {
       ...filteredRoutes.map(route => [
         route.id,
         route.route_code || '',
-        route.start_point,
-        route.end_point,
-        route.distance || '',
-        route.duration || '',
+        route.origin,
+        route.destination,
+        route.distance_km || '',
+        route.duration_minutes ? `${route.duration_minutes} min` : '',
         route.created_at ? new Date(route.created_at).toLocaleDateString() : ''
       ].join(','))
     ].join('\n');
@@ -261,10 +261,10 @@ export function Routes() {
                   <tr key={route.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">#{route.id}</td>
                     <td className="py-3 px-4 font-medium">{route.route_code || '-'}</td>
-                    <td className="py-3 px-4 font-medium">{route.start_point}</td>
-                    <td className="py-3 px-4">{route.end_point}</td>
-                    <td className="py-3 px-4">{route.distance ? `${route.distance} km` : "N/A"}</td>
-                    <td className="py-3 px-4">{route.duration || "N/A"}</td>
+                    <td className="py-3 px-4 font-medium">{route.origin}</td>
+                    <td className="py-3 px-4">{route.destination}</td>
+                    <td className="py-3 px-4">{route.distance_km ? `${route.distance_km} km` : "N/A"}</td>
+                    <td className="py-3 px-4">{route.duration_minutes ? `${route.duration_minutes} min` : "N/A"}</td>
                     <td className="py-3 px-4 text-gray-500">
                       {route.created_at ? new Date(route.created_at).toLocaleDateString() : "N/A"}
                     </td>
@@ -307,16 +307,16 @@ export function Routes() {
               <Label>Start Point</Label>
               <Input
                 placeholder="e.g. Douala"
-                value={newRoute.start_point}
-                onChange={(e) => setNewRoute({ ...newRoute, start_point: e.target.value })}
+                value={newRoute.origin}
+                onChange={(e) => setNewRoute({ ...newRoute, origin: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label>End Point</Label>
               <Input
                 placeholder="e.g. Yaoundé"
-                value={newRoute.end_point}
-                onChange={(e) => setNewRoute({ ...newRoute, end_point: e.target.value })}
+                value={newRoute.destination}
+                onChange={(e) => setNewRoute({ ...newRoute, destination: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -324,16 +324,16 @@ export function Routes() {
                 <Label>Distance (km)</Label>
                 <Input
                   placeholder="e.g. 250"
-                  value={newRoute.distance}
-                  onChange={(e) => setNewRoute({ ...newRoute, distance: e.target.value })}
+                  value={newRoute.distance_km}
+                  onChange={(e) => setNewRoute({ ...newRoute, distance_km: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Duration</Label>
+                <Label>Duration (minutes)</Label>
                 <Input
-                  placeholder="e.g. 4 hours"
-                  value={newRoute.duration}
-                  onChange={(e) => setNewRoute({ ...newRoute, duration: e.target.value })}
+                  placeholder="e.g. 240"
+                  value={newRoute.duration_minutes}
+                  onChange={(e) => setNewRoute({ ...newRoute, duration_minutes: e.target.value })}
                 />
               </div>
             </div>
@@ -356,30 +356,30 @@ export function Routes() {
               <div className="space-y-2">
                 <Label>Start Point</Label>
                 <Input
-                  value={selectedRoute.start_point}
-                  onChange={(e) => setSelectedRoute({ ...selectedRoute, start_point: e.target.value })}
+                  value={selectedRoute.origin}
+                  onChange={(e) => setSelectedRoute({ ...selectedRoute, origin: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>End Point</Label>
                 <Input
-                  value={selectedRoute.end_point}
-                  onChange={(e) => setSelectedRoute({ ...selectedRoute, end_point: e.target.value })}
+                  value={selectedRoute.destination}
+                  onChange={(e) => setSelectedRoute({ ...selectedRoute, destination: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Distance (km)</Label>
                   <Input
-                    value={selectedRoute.distance || ""}
-                    onChange={(e) => setSelectedRoute({ ...selectedRoute, distance: e.target.value })}
+                    value={selectedRoute.distance_km || ""}
+                    onChange={(e) => setSelectedRoute({ ...selectedRoute, distance_km: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Duration</Label>
+                  <Label>Duration (minutes)</Label>
                   <Input
-                    value={selectedRoute.duration || ""}
-                    onChange={(e) => setSelectedRoute({ ...selectedRoute, duration: e.target.value })}
+                    value={selectedRoute.duration_minutes || ""}
+                    onChange={(e) => setSelectedRoute({ ...selectedRoute, duration_minutes: e.target.value })}
                   />
                 </div>
               </div>
@@ -401,7 +401,7 @@ export function Routes() {
           {selectedRoute && (
             <div className="py-4">
               <p className="text-gray-600">
-                Are you sure you want to delete the route from <strong>{selectedRoute.start_point}</strong> to <strong>{selectedRoute.end_point}</strong>?
+                Are you sure you want to delete the route from <strong>{selectedRoute.origin}</strong> to <strong>{selectedRoute.destination}</strong>?
               </p>
               <p className="text-red-500 mt-2">This action cannot be undone.</p>
             </div>

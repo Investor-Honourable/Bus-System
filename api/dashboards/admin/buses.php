@@ -23,7 +23,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 // GET - Fetch all buses
 if ($method === 'GET') {
     try {
-        $result = $conn->query("SELECT * FROM buses ORDER BY bus_name");
+        $result = $conn->query("SELECT id, bus_number, bus_name, bus_type, total_seats as capacity, available_seats, amenities, license_plate, model, year, color, status FROM buses ORDER BY bus_name");
         $buses = [];
         
         while ($row = $result->fetch_assoc()) {
@@ -43,17 +43,17 @@ if ($method === 'POST') {
     $data = json_decode(file_get_contents("php://input"), true);
     
     $bus_number = $data['bus_number'] ?? '';
-    $bus_name = $data['bus_name'] ?? '';
+    $bus_name = $data['bus_name'] ?? $data['bus_number'] ?? '';
     $bus_type = $data['bus_type'] ?? 'standard';
-    $total_seats = $data['total_seats'] ?? 0;
+    $total_seats = intval($data['total_seats'] ?? $data['capacity'] ?? 0);
     $amenities = json_encode($data['amenities'] ?? []);
-    $license_plate = $data['license_plate'] ?? '';
+    $license_plate = $data['license_plate'] ?? 'CE-' . strtoupper(substr($bus_number, -3)) . '-AA';
     $model = $data['model'] ?? '';
     $year = $data['year'] ?? null;
     $color = $data['color'] ?? '';
     
-    if (!$bus_number || !$bus_name || !$total_seats) {
-        echo json_encode(['status' => 'error', 'message' => 'Bus number, name, and total seats are required']);
+    if (!$bus_number || !$total_seats) {
+        echo json_encode(['status' => 'error', 'message' => 'Bus number and capacity are required']);
         exit;
     }
     
@@ -80,7 +80,7 @@ if ($method === 'PUT') {
     $bus_number = $data['bus_number'] ?? '';
     $bus_name = $data['bus_name'] ?? '';
     $bus_type = $data['bus_type'] ?? 'standard';
-    $total_seats = $data['total_seats'] ?? 0;
+    $total_seats = intval($data['total_seats'] ?? $data['capacity'] ?? 0);
     $amenities = json_encode($data['amenities'] ?? []);
     $license_plate = $data['license_plate'] ?? '';
     $model = $data['model'] ?? '';

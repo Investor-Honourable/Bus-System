@@ -114,6 +114,7 @@ if ($method === 'PUT') {
     $email = $data['email'] ?? '';
     $phone = $data['phone'] ?? '';
     $gender = $data['gender'] ?? '';
+    $password = $data['password'] ?? '';
     $license_number = $data['license_number'] ?? '';
     $license_expiry = $data['license_expiry'] ?? '';
     $license_type = $data['license_type'] ?? 'Class B';
@@ -140,8 +141,14 @@ if ($method === 'PUT') {
         }
         
         // Update user
-        $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, phone = ?, gender = ? WHERE id = ?");
-        $stmt->bind_param("ssssi", $name, $email, $phone, $gender, $driver['user_id']);
+        if ($password) {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, phone = ?, gender = ?, password = ? WHERE id = ?");
+            $stmt->bind_param("sssssi", $name, $email, $phone, $gender, $hashed_password, $driver['user_id']);
+        } else {
+            $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, phone = ?, gender = ? WHERE id = ?");
+            $stmt->bind_param("ssssi", $name, $email, $phone, $gender, $driver['user_id']);
+        }
         $stmt->execute();
         
         // Update driver

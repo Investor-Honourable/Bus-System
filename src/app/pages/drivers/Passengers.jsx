@@ -28,11 +28,12 @@ export default function TripPassengers() {
       const data = await response.json();
       
       if (data.status === "success") {
-        setTrips(data.data || []);
+        const tripsData = data.trips || data.data || [];
+        setTrips(tripsData);
         // Auto-select first trip if available
-        if (data.data && data.data.length > 0) {
-          fetchPassengers(data.data[0].id);
-          setSelectedTrip(data.data[0]);
+        if (tripsData.length > 0) {
+          fetchPassengers(tripsData[0].id);
+          setSelectedTrip(tripsData[0]);
         }
       }
     } catch (error) {
@@ -127,7 +128,7 @@ export default function TripPassengers() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(trip.status)}`}>
                         {trip.status}
                       </span>
-                      <span className="text-xs text-gray-500">{trip.bus_number}</span>
+                      <span className="text-xs text-gray-500">{trip.bus_number} ({trip.total_seats || trip.available_seats || 'N/A'} seats)</span>
                     </div>
                     <div className="font-medium text-sm">{trip.origin} → {trip.destination}</div>
                     <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
@@ -136,7 +137,7 @@ export default function TripPassengers() {
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Users className="w-3 h-3" />
-                      {trip.booked_seats || 0} passengers
+                      {trip.booked_seats || 0}/{trip.available_seats || trip.total_seats || 'N/A'} passengers
                     </div>
                   </button>
                 ))}

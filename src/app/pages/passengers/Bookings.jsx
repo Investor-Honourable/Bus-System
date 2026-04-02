@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { Search, Filter, Calendar, MapPin, Users, DollarSign, Phone, Mail, X, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Input } from "../../components/ui/input.jsx";
@@ -22,7 +23,9 @@ import { Label } from "../../components/ui/label.jsx";
 import { toast } from "sonner";
 
 export function Bookings() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,16 +39,7 @@ export function Bookings() {
       const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       const userId = currentUser.id || 0;
 
-      // Fix any missing tickets first
-      try {
-        await fetch("/api/index.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "fix_tickets", user_id: userId }),
-        });
-      } catch (e) {
-        // Continue anyway
-      }
+
 
       const response = await fetch("/api/index.php", {
         method: "POST",
@@ -81,9 +75,13 @@ export function Bookings() {
   };
 
   const filteredBookings = bookings.filter(
-    (booking) =>
-      booking.routeFrom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.routeTo.toLowerCase().includes(searchQuery.toLowerCase())
+    (booking) => {
+      const matchesSearch = 
+        booking.routeFrom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        booking.routeTo.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    }
   );
 
   const getStatusColor = (status) => {
@@ -129,6 +127,22 @@ export function Bookings() {
       toast.error("Failed to cancel booking. Please try again.");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+            <p className="text-gray-600 mt-1">View and manage all your bus reservations</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -220,7 +234,7 @@ export function Bookings() {
                 className="pl-10"
               />
             </div>
-            <Select defaultValue="all">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
               </SelectTrigger>
@@ -231,9 +245,9 @@ export function Bookings() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setStatusFilter("all")}>
               <Filter className="w-4 h-4" />
-              Filter
+              Clear Filter
             </Button>
           </div>
         </CardHeader>
@@ -242,8 +256,22 @@ export function Bookings() {
       {/* Bookings Table */}
       <Card>
         <CardContent className="pt-6">
-          <div className="space-y-3">
-            {filteredBookings.map((booking) => (
+          {filteredBookings.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="font-semibold text-gray-900 mb-2">No Bookings Found</h3>
+              <p className="text-gray-500 text-sm mb-4">
+                {searchQuery || statusFilter !== "all" 
+                  ? "No bookings match your search criteria"
+                  : "You haven't booked any trips yet"}
+              </p>
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => navigate("/dashboard/discover")}>
+                Book Your First Trip
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredBookings.map((booking) => (
               <div
                 key={booking.id}
                 className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
@@ -327,7 +355,9 @@ export function Bookings() {
               </div>
             ))}
           </div>
+          )}
         </CardContent>
+        
       </Card>
     </div>
   );

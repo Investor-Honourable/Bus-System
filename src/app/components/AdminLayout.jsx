@@ -138,6 +138,7 @@ export function AdminLayout() {
     { to: "/dashboard/admin/drivers", icon: UserCog, label: t('admin.drivers'), end: false },
     { to: "/dashboard/admin/routes", icon: Route, label: t('admin.routes'), end: false },
     { to: "/dashboard/admin/trips", icon: Calendar, label: t('admin.trips'), end: false },
+    { to: "/dashboard/admin/passengers", icon: Users, label: t('admin.passengers') || 'Passengers', end: false },
     { to: "/dashboard/admin/bookings", icon: Ticket, label: t('admin.bookings'), end: false },
     { to: "/dashboard/admin/reports", icon: FileText, label: t('admin.reports'), end: false },
   ];

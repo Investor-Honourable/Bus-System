@@ -7,7 +7,7 @@
 // Get database credentials from environment variables
 // In production, set these in your server's environment config
 $db_host = getenv('DB_HOST') ?: 'localhost';
-$db_name = getenv('DB_NAME') ?: 'bus_system';
+$db_name = getenv('DB_NAME') ?: 'bus_system_recover';
 $db_user = getenv('DB_USER') ?: 'root';
 $db_pass = getenv('DB_PASS') ?: '';
 

@@ -107,6 +107,7 @@ export function Dashboard() {
         console.log("Stats API response:", statsData);
       } catch (e) {
         console.log("Stats fetch error:", e);
+        toast.error("Failed to load statistics. Please refresh the page.");
       }
 
       if (statsData.status === "success" && statsData.stats) {
@@ -120,7 +121,7 @@ export function Dashboard() {
           },
           {
             label: "Upcoming Trips",
-            value: parseInt(statsData.stats.upcoming_trips) || "0",
+            value: String(parseInt(statsData.stats.upcoming_trips) || 0),
             subtitle: "Next 7 days",
             icon: CalendarIcon,
             color: "purple",
@@ -154,6 +155,7 @@ export function Dashboard() {
         console.log("Bookings API response:", bookingsData);
       } catch (e) {
         console.log("Bookings fetch error:", e);
+        toast.error("Failed to load bookings. Please refresh the page.");
       }
 
       const now = new Date();
@@ -240,6 +242,7 @@ export function Dashboard() {
         console.log("Routes API response:", routesData);
       } catch (e) {
         console.log("Routes fetch error:", e);
+        toast.error("Failed to load routes. Showing sample data.");
       }
       
       // Parse routes from different API formats

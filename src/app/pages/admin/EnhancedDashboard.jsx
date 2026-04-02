@@ -79,9 +79,9 @@ export function EnhancedDashboard() {
       const driversData = await driversRes.json();
 
       setUsers(usersData.users || usersData.data || []);
-      setBuses(busesData.data || []);
-      setRoutes(routesData.data || []);
-      setSchedules(schedulesData.data || []);
+      setBuses(busesData.buses || busesData.data || []);
+      setRoutes(routesData.routes || routesData.data || []);
+      setSchedules(schedulesData.trips || schedulesData.data || []);
       setBookings(bookingsData.bookings || bookingsData.data || []);
       setDrivers(driversData.drivers || driversData.data || []);
 
@@ -137,7 +137,31 @@ export function EnhancedDashboard() {
       const response = await fetch("/api/dashboards/admin/system_metrics.php");
       const data = await response.json();
       if (data.metrics) {
-        setSystemMetrics(data.metrics);
+        const metrics = data.metrics;
+        // Map API response to frontend expected structure
+        setSystemMetrics({
+          cpuUsage: metrics.performance?.cpu_usage || 0,
+          memoryUsage: metrics.performance?.memory_usage || 0,
+          diskUsage: metrics.performance?.disk_usage || 0,
+          activeConnections: metrics.statistics?.active_sessions || 0,
+          uptime: metrics.performance?.uptime_hours || 0,
+          // Additional metrics from API
+          databaseStatus: metrics.database?.status || 'unknown',
+          dbResponseTime: metrics.database?.response_time_ms || 0,
+          totalUsers: metrics.statistics?.users || 0,
+          totalBuses: metrics.statistics?.buses || 0,
+          totalRoutes: metrics.statistics?.routes || 0,
+          totalTrips: metrics.statistics?.trips || 0,
+          totalBookings: metrics.statistics?.bookings || 0,
+          totalDrivers: metrics.statistics?.drivers || 0,
+          recentActivity: metrics.statistics?.recent_activity || 0,
+          activeUsersToday: metrics.statistics?.active_users_today || 0,
+          totalRevenue: metrics.revenue?.total || 0,
+          avgBookingValue: metrics.revenue?.average || 0,
+          confirmedBookings: metrics.bookings?.confirmed || 0,
+          pendingBookings: metrics.bookings?.pending || 0,
+          cancelledBookings: metrics.bookings?.cancelled || 0
+        });
       }
     } catch (error) {
       console.error("Error fetching system metrics:", error);

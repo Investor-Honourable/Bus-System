@@ -19,16 +19,7 @@ export function Tickets() {
       const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       const userId = currentUser.id || 0;
 
-      // First, try to fix any missing tickets for this user
-      try {
-        await fetch("/api/index.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "fix_tickets", user_id: userId }),
-        });
-      } catch (fixError) {
-        console.log("Fix tickets not available, continuing anyway");
-      }
+
 
       const response = await fetch("/api/index.php", {
         method: "POST",

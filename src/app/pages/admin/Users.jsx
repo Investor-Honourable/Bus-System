@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { Users as UsersIcon, Plus, Search, Edit, Trash2, UserPlus, Shield, Ban, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
@@ -18,8 +19,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../../components/ui/dialog.jsx";
+import { toast } from "sonner";
 
 export function Users() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,16 +70,47 @@ export function Users() {
   const updateUserRole = async (userId, newRole) => {
     try {
       const response = await fetch("/api/dashboards/admin/users.php", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, role: newRole }),
+        body: JSON.stringify({ id: userId, role: newRole }),
       });
       const data = await response.json();
-      if (data.message) {
-        fetchUsers();
+      if (data.status === 'success' || data.message) {
+        toast.success("Role updated successfully");
+        
+        // Check if the current user's role was changed
+        const currentUser = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
+        if (currentUser.id === userId) {
+          // Update localStorage with new role
+          const updatedUser = { ...currentUser, role: newRole };
+          localStorage.setItem("busfare_current_user", JSON.stringify(updatedUser));
+          
+          // Redirect to appropriate dashboard based on new role
+          setTimeout(() => {
+            switch (newRole) {
+              case "admin":
+              case "super_admin":
+                navigate("/dashboard/admin");
+                break;
+              case "driver":
+                navigate("/dashboard/driver");
+                break;
+              case "passenger":
+              default:
+                navigate("/dashboard");
+                break;
+            }
+          }, 1000);
+        } else {
+          // Just refresh the users list if it's not the current user
+          fetchUsers();
+        }
+      } else {
+        toast.error(data.message || "Failed to update role");
       }
     } catch (error) {
       console.error("Error updating user role:", error);
+      toast.error("Failed to update role. Please try again.");
     }
   };
 
@@ -84,23 +118,30 @@ export function Users() {
     const newStatus = currentStatus === "active" ? "blocked" : "active";
     try {
       const response = await fetch("/api/dashboards/admin/users.php", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, status: newStatus }),
+        body: JSON.stringify({ id: userId, is_active: newStatus === "active" ? 1 : 0 }),
       });
       const data = await response.json();
-      if (data.message) {
+      if (data.status === 'success' || data.message) {
+        toast.success(`User ${newStatus === "active" ? "activated" : "blocked"} successfully`);
         fetchUsers();
+      } else {
+        toast.error(data.message || "Failed to update user status");
       }
     } catch (error) {
       console.error("Error updating user status:", error);
+      toast.error("Failed to update user status. Please try again.");
     }
   };
 
   const addUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.password) return;
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
     try {
-      const response = await fetch("/api/controller/signup.php", {
+      const response = await fetch("/api/dashboards/admin/users.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,13 +154,17 @@ export function Users() {
         }),
       });
       const data = await response.json();
-      if (data.message || data.success) {
+      if (data.status === 'success' || data.message) {
+        toast.success("User added successfully");
         setNewUser({ name: "", username: "", email: "", phone: "", password: "", role: "passenger" });
         setIsAddDialogOpen(false);
         fetchUsers();
+      } else {
+        toast.error(data.message || "Failed to add user");
       }
     } catch (error) {
       console.error("Error adding user:", error);
+      toast.error("Failed to add user. Please try again.");
     }
   };
 
@@ -139,16 +184,20 @@ export function Users() {
       const response = await fetch("/api/dashboards/admin/users.php", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: selectedUser.id }),
+        body: JSON.stringify({ id: selectedUser.id }),
       });
       const data = await response.json();
-      if (data.message || data.success) {
+      if (data.status === 'success' || data.message) {
+        toast.success("User deleted successfully");
         setIsDeleteDialogOpen(false);
         setSelectedUser(null);
         fetchUsers();
+      } else {
+        toast.error(data.message || "Failed to delete user");
       }
     } catch (error) {
       console.error("Error deleting user:", error);
+      toast.error("Failed to delete user. Please try again.");
     }
   };
 

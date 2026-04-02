@@ -26,23 +26,23 @@ export function AdminDashboard() {
     try {
       const usersRes = await fetch("/api/dashboards/admin/users.php");
       const usersData = await usersRes.json();
-      const users = usersData.data || [];
+      const users = usersData.users || usersData.data || [];
 
       const busesRes = await fetch("/api/dashboards/admin/buses.php");
       const busesData = await busesRes.json();
-      const buses = busesData.data || [];
+      const buses = busesData.buses || busesData.data || [];
 
       const routesRes = await fetch("/api/dashboards/admin/routes.php");
       const routesData = await routesRes.json();
-      const routes = routesData.data || [];
+      const routes = routesData.routes || routesData.data || [];
 
       const schedulesRes = await fetch("/api/dashboards/admin/schedules.php");
       const schedulesData = await schedulesRes.json();
-      const schedules = schedulesData.data || [];
+      const schedules = schedulesData.trips || schedulesData.data || [];
 
       const bookingsRes = await fetch("/api/dashboards/admin/bookings.php");
       const bookingsData = await bookingsRes.json();
-      const bookings = bookingsData.data || [];
+      const bookings = bookingsData.bookings || bookingsData.data || [];
       
       // Calculate total revenue from bookings
       const totalRevenue = bookings.reduce((sum, b) => sum + parseFloat(b.total_price || b.price || 0), 0);
