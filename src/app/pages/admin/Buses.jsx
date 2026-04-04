@@ -58,19 +58,29 @@ export function Buses() {
   const createBus = async () => {
     if (!newBus.bus_number || !newBus.capacity) return;
     try {
+      // Map capacity to total_seats for backend compatibility
+      const busData = {
+        bus_number: newBus.bus_number,
+        bus_name: newBus.bus_number,
+        total_seats: parseInt(newBus.capacity),
+        bus_type: newBus.type || 'standard'
+      };
       const response = await fetch("/api/dashboards/admin/buses.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newBus),
+        body: JSON.stringify(busData),
       });
       const data = await response.json();
-      if (data.message) {
+      if (data.status === 'success' || data.message) {
         setNewBus({ bus_number: "", capacity: "", type: "standard" });
         setIsAddDialogOpen(false);
         fetchBuses();
+      } else {
+        alert(data.message || "Failed to add bus");
       }
     } catch (error) {
       console.error("Error creating bus:", error);
+      alert("Failed to create bus. Please try again.");
     }
   };
 

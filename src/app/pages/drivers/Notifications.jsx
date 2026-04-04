@@ -17,15 +17,17 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      const response = await fetch("/api/dashboards/drivers/notifications.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driver_id: user.id })
+      const response = await fetch("/api/notifications.php?action=list", {
+        method: "GET",
+        headers: { 
+          "User-ID": user.id,
+          "Content-Type": "application/json" 
+        }
       });
       const data = await response.json();
       
-      if (data.status === "success" && data.data) {
-        setNotifications(data.data);
+      if (data.status === "success" && data.notifications) {
+        setNotifications(data.notifications);
       }
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -66,18 +68,20 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      await fetch("/api/dashboards/drivers/notifications.php", {
+      await fetch("/api/notifications.php?action=mark_read", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "User-ID": user.id,
+          "Content-Type": "application/json" 
+        },
         body: JSON.stringify({ 
-          driver_id: user.id,
           notification_id: id,
-          action: "mark_read"
+          user_id: user.id
         })
       });
       
       setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, read: true } : n
+        n.id === id ? { ...n, is_read: true } : n
       ));
     } catch (error) {
       console.error("Error marking as read:", error);
@@ -88,20 +92,16 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      // Mark each as read
-      for (const n of notifications) {
-        await fetch("/api/dashboards/drivers/notifications.php", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            driver_id: user.id,
-            notification_id: n.id,
-            action: "mark_read"
-          })
-        });
-      }
+      await fetch("/api/notifications.php?action=mark_all_read", {
+        method: "PUT",
+        headers: { 
+          "User-ID": user.id,
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ user_id: user.id })
+      });
       
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
@@ -111,12 +111,15 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      await fetch("/api/dashboards/drivers/notifications.php", {
+      await fetch("/api/notifications.php", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "User-ID": user.id,
+          "Content-Type": "application/json" 
+        },
         body: JSON.stringify({ 
-          driver_id: user.id,
-          notification_id: id
+          notification_id: id,
+          user_id: user.id
         })
       });
       
@@ -130,15 +133,18 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      // Delete each notification
+      // Delete each notification using unified API
       for (const n of notifications) {
         if (typeof n.id === 'number') {
-          await fetch("/api/dashboards/drivers/notifications.php", {
+          await fetch("/api/notifications.php", {
             method: "DELETE",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "User-ID": user.id,
+              "Content-Type": "application/json" 
+            },
             body: JSON.stringify({ 
-              driver_id: user.id,
-              notification_id: n.id
+              notification_id: n.id,
+              user_id: user.id
             })
           });
         }
@@ -151,12 +157,12 @@ export default function DriverNotifications() {
   };
 
   const filteredNotifications = notifications.filter(n => {
-    if (filter === "unread") return !n.read;
-    if (filter === "read") return n.read;
+    if (filter === "unread") return !n.is_read;
+    if (filter === "read") return n.is_read;
     return true;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="space-y-6">
@@ -184,7 +190,7 @@ export default function DriverNotifications() {
         {[
           { key: "all", label: "All", count: notifications.length },
           { key: "unread", label: "Unread", count: unreadCount },
-          { key: "read", label: "Read", count: notifications.filter(n => n.read).length },
+          { key: "read", label: "Read", count: notifications.filter(n => n.is_read).length },
         ].map((f) => (
           <Button
             key={f.key}
@@ -220,7 +226,7 @@ export default function DriverNotifications() {
           {filteredNotifications.map((notification) => (
             <Card 
               key={notification.id} 
-              className={`${getNotificationBg(notification.type)} ${!notification.read ? 'border-l-4 border-l-orange-500' : ''}`}
+              className={`${getNotificationBg(notification.type)} ${!notification.is_read ? 'border-l-4 border-l-orange-500' : ''}`}
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
@@ -233,13 +239,13 @@ export default function DriverNotifications() {
                       <h3 className="font-semibold text-gray-900">{notification.title}</h3>
                       <span className="text-xs text-gray-500 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {notification.time}
+                        {notification.created_at || notification.time}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
                     
                     <div className="flex gap-2 mt-3">
-                      {!notification.read && (
+                      {!notification.is_read && (
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -262,7 +268,7 @@ export default function DriverNotifications() {
                     </div>
                   </div>
                   
-                  {!notification.read && (
+                  {!notification.is_read && (
                     <div className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
                   )}
                 </div>

@@ -17,9 +17,8 @@ export default function TripDetails() {
   }, [id]);
 
   const fetchTripDetails = async () => {
+    const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
     try {
-      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
-      
       // Fetch trip details
       const tripsResponse = await fetch("/api/dashboards/drivers/my_trips.php", {
         method: "POST",
@@ -37,12 +36,21 @@ export default function TripDetails() {
       const passengersResponse = await fetch("/api/dashboards/drivers/trip_passengers.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trip_id: id })
+        body: JSON.stringify({ trip_id: id, user_id: user.id })
       });
       const passengersData = await passengersResponse.json();
       
       if (passengersData.status === "success") {
-        setPassengers(passengersData.data || []);
+        // Map API response to frontend expected format
+        const passengersList = (passengersData.passengers || passengersData.data || []).map(p => ({
+          id: p.booking_id,
+          name: p.passenger_name || p.name,
+          phone: p.passenger_phone || p.phone,
+          email: p.passenger_email || p.email,
+          seat_number: p.seat_number || p.seat_numbers,
+          booking_ref: p.booking_reference || p.ticket_code || p.booking_ref
+        }));
+        setPassengers(passengersList);
       }
     } catch (error) {
       console.error("Error fetching trip details:", error);
@@ -52,10 +60,9 @@ export default function TripDetails() {
   };
 
   const updateTripStatus = async (newStatus) => {
+    const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
     setUpdating(true);
     try {
-      const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
-      
       const response = await fetch("/api/dashboards/drivers/update_trip_status.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -301,16 +308,16 @@ export default function TripDetails() {
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
                             <span className="text-sm font-medium text-orange-700">
-                              {passenger.name?.charAt(0) || "P"}
+                              {passenger.name?.charAt(0) || passenger.passenger_name?.charAt(0) || "P"}
                             </span>
                           </div>
-                          <span className="font-medium">{passenger.name || "Unknown"}</span>
+                          <span className="font-medium">{passenger.name || passenger.passenger_name || "Unknown"}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-600">
                         <div>
                           {passenger.phone && <p>{passenger.phone}</p>}
-                          {passenger.email && <p className="text-xs">{passenger.email}</p>}
+                          {(passenger.email || passenger.passenger_email) && <p className="text-xs">{passenger.email || passenger.passenger_email}</p>}
                         </div>
                       </td>
                       <td className="py-3 px-4">

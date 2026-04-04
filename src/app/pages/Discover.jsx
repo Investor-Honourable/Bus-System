@@ -207,38 +207,66 @@ export function Discover() {
       }
 
       if (matchedRoutes.length > 0) {
-        // Convert routes to trip format for display
-        const trips = matchedRoutes.map((route, index) => ({
-          id: route.id || index + 1,
-          name: `${route.origin} - ${route.destination}`,
-          from: route.origin,
-          to: route.destination,
-          image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80",
-          duration: `${Math.floor((route.duration_minutes || 180) / 60)}h ${(route.duration_minutes || 180) % 60}m`,
-          distance: `${route.distance_km || 0} km`,
-          price: parseInt(route.base_price || 3000),
-          priceFormatted: (route.base_price || 3000).toLocaleString(),
-          rating: 4.5 + Math.random() * 0.5,
-          reviews: Math.floor(100 + Math.random() * 200),
-          description: `Route from ${route.origin} to ${route.destination}`,
-          popular: index < 3,
-          seatsAvailable: 50,
-          nextDeparture: "Available today",
-          tripId: route.id,
-          busType: 'Standard',
-          busNumber: '',
-          busName: '',
-          departureDate: date || new Date().toISOString().split('T')[0],
-          departureTime: '09:00:00',
-          arrivalTime: '',
-          busId: 1,
-          totalSeats: 50,
-          amenities: ['WiFi', 'AC'],
-          routeId: route.id,
-          isRouteOnly: true // Flag to indicate this is a route, not a trip
-        }));
-        setSearchResults(trips);
-        toast.success(`Found ${trips.length} routes!`);
+        // Fetch trips from database for the first matching route
+        // Use the first route that matches to get trips
+        const firstRoute = matchedRoutes[0];
+        
+        try {
+          const tripsResponse = await fetch("/api/index.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "get_trips",
+              route_id: firstRoute.id,
+              date: date || ''
+            }),
+          });
+          
+          const tripsData = await tripsResponse.json();
+          
+          if (tripsData.status === 'success' && tripsData.trips && tripsData.trips.length > 0) {
+            // Format trips from database
+            const trips = tripsData.trips.map(trip => ({
+              id: trip.id,
+              name: `${trip.origin} - ${trip.destination}`,
+              from: trip.origin,
+              to: trip.destination,
+              image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80",
+              duration: `${Math.floor((trip.duration_minutes || 180) / 60)}h ${(trip.duration_minutes || 180) % 60}m`,
+              distance: `${trip.distance_km || 0} km`,
+              price: parseInt(trip.price || 3000),
+              priceFormatted: (trip.price || 3000).toLocaleString(),
+              rating: trip.driver_rating ? parseFloat(trip.driver_rating) : 4.5,
+              reviews: 150,
+              description: `Route from ${trip.origin} to ${trip.destination}`,
+              popular: false,
+              seatsAvailable: trip.available_seats,
+              nextDeparture: trip.departure_time,
+              tripId: trip.id,
+              busType: trip.bus_type || 'Standard',
+              busNumber: trip.bus_number || '',
+              busName: trip.bus_name || '',
+              departureDate: trip.departure_date,
+              departureTime: trip.departure_time,
+              arrivalTime: trip.arrival_time || '',
+              busId: trip.bus_id,
+              totalSeats: trip.available_seats,
+              amenities: trip.amenities || ['WiFi', 'AC'],
+              routeId: trip.route_id,
+              isRouteOnly: false
+            }));
+            setSearchResults(trips);
+            toast.success(`Found ${trips.length} trip(s)!`);
+          } else {
+            // No trips found for this route
+            setSearchResults([]);
+            toast.info("No trips available for this route. Please try another route or check back later.");
+          }
+        } catch (tripError) {
+          console.error("Error fetching trips:", tripError);
+          setSearchResults([]);
+          toast.error("Failed to fetch trips for this route.");
+        }
       } else {
         toast.error("No routes found for this search");
       }
@@ -299,8 +327,9 @@ export function Discover() {
             distance: `${trip.distance_km || 0} km`,
             price: parseInt(trip.price || 0),
             priceFormatted: (trip.price || 0).toLocaleString(),
-            rating: 4.5 + Math.random() * 0.5,
-            reviews: Math.floor(100 + Math.random() * 200),
+            // Use actual driver rating from database, fallback to default
+            rating: trip.driver_rating ? parseFloat(trip.driver_rating) : 4.5,
+            reviews: 150, // Use actual review count from database if available
             description: `Route from ${trip.origin} to ${trip.destination}`,
             popular: index < 3,
             seatsAvailable: trip.available_seats || 0,
@@ -315,6 +344,8 @@ export function Discover() {
             busId: trip.bus_id,
             totalSeats: trip.total_seats || 50,
             amenities: trip.amenities || [],
+            routeId: trip.route_id,
+            isRouteOnly: false
           }));
           setSearchResults(trips);
         }

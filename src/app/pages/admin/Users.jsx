@@ -36,7 +36,8 @@ export function Users() {
     email: "",
     phone: "",
     password: "",
-    role: "passenger"
+    role: "passenger",
+    gender: ""
   });
 
   useEffect(() => {
@@ -140,6 +141,20 @@ export function Users() {
       toast.error("Please fill in all required fields");
       return;
     }
+    
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
+    // Validate password length
+    if (newUser.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    
     try {
       const response = await fetch("/api/dashboards/admin/users.php", {
         method: "POST",
@@ -149,14 +164,15 @@ export function Users() {
           username: newUser.username,
           email: newUser.email,
           phone: newUser.phone,
+          gender: newUser.gender || null,
           password: newUser.password,
-          role: newUser.role
+          role: newUser.role || 'passenger'
         }),
       });
       const data = await response.json();
       if (data.status === 'success' || data.message) {
         toast.success("User added successfully");
-        setNewUser({ name: "", username: "", email: "", phone: "", password: "", role: "passenger" });
+        setNewUser({ name: "", username: "", email: "", phone: "", password: "", role: "passenger", gender: "" });
         setIsAddDialogOpen(false);
         fetchUsers();
       } else {

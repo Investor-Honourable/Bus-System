@@ -40,7 +40,7 @@ export function useNotifications(userId) {
           'User-ID': userId,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ id: notificationId })
+        body: JSON.stringify({ notification_id: notificationId, user_id: userId })
       });
       
       // Update local state

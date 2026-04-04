@@ -28,8 +28,8 @@ export default function ScanTicket() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          booking_ref: ticketCode.trim(),
-          driver_id: user.id
+          ticket_code: ticketCode.trim(),
+          user_id: user.id
         })
       });
       
@@ -41,9 +41,9 @@ export default function ScanTicket() {
       
       const data = await response.json();
       
-      if (data.status === "success" && data.data) {
+      if (data.status === "success" && data.ticket) {
         // Transform API response to match component expectations
-        const ticket = data.data;
+        const ticket = data.ticket;
         setSearchResult({
           booking_ref: ticket.booking_ref,
           ticket_ref: ticket.ticket_ref,

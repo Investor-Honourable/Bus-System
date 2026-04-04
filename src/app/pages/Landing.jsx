@@ -130,9 +130,9 @@ export function Landing() {
               <img 
                 src={logoImage} 
                 alt="CamTransit Logo" 
-                className="w-10 h-10 object-contain"
+                className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
               />
-              <span className="text-xl font-semibold">CamTransit</span>
+              <span className="text-lg sm:text-xl font-semibold">CamTransit</span>
             </div>
 
             {/* Center Navigation - Desktop */}
@@ -233,30 +233,30 @@ export function Landing() {
       </nav>
 
       {/* 2. HERO SECTION */}
-      <section className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+      <section className="pt-20 sm:pt-24 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Text Content */}
-            <div className="space-y-8">
-              <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+            <div className="space-y-6 sm:space-y-8">
+              <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm">
                 🇨🇲 Proudly Serving Cameroon
               </Badge>
               
-              <h1 className="text-5xl lg:text-6xl !font-bold !leading-tight">
+              <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl !font-bold !leading-tight">
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Travel Across Cameroon with Comfort & Safety
                 </span>
               </h1>
               
-              <p className="text-xl text-gray-600 !leading-relaxed">
+              <p className="text-base sm:text-xl text-gray-600 !leading-relaxed">
                 Book your bus tickets in seconds. Experience modern, reliable, and affordable travel across all major cities in Cameroon.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Link to="/signup">
                   <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
                     Book Your Trip Now
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                    <ArrowRight className="ml-2 w-4 sm:w-5 h-4 sm:h-5" />
                   </Button>
                 </Link>
                 <Button 
@@ -272,29 +272,29 @@ export function Landing() {
               <div className="flex items-center gap-2 pt-2">
                 <div className="flex gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <Star key={i} className="w-4 sm:w-5 h-4 sm:h-5 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <span className="text-sm text-gray-600 font-medium">4.8/5 from 2,500+ travelers</span>
+                <span className="text-xs sm:text-sm text-gray-600 font-medium">4.8/5 from 2,500+ travelers</span>
               </div>
             </div>
             
             {/* Hero Image */}
-            <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl rounded-3xl" />
+            <div className="relative mt-8 lg:mt-0">
+              <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-2xl sm:blur-3xl rounded-2xl sm:rounded-3xl" />
               <img 
                 src={heroImage} 
                 alt="Modern bus" 
-                className="relative rounded-3xl shadow-2xl w-full h-[80px] object-cover"
+                className="relative rounded-2xl sm:rounded-3xl shadow-2xl w-full h-48 sm:h-64 md:h-80 lg:h-96 object-cover"
               />
-              <div className="absolute -bottom-4 -left-4 bg-white rounded-lg shadow-lg p-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+              <div className="absolute -bottom-3 sm:-bottom-4 -left-3 sm:-left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-4 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Instant Booking</p>
-                    <p className="text-xs text-gray-500">Under 2 minutes</p>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-900">Instant Booking</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500">Under 2 minutes</p>
                   </div>
                 </div>
               </div>
@@ -377,25 +377,26 @@ export function Landing() {
       {/* 4. POPULAR ROUTES SECTION */}
       <section id="routes" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-blue-50 text-blue-700 border-blue-200">
+          <div className="text-center mb-10 sm:mb-12 md:mb-16">
+            <Badge className="mb-3 sm:mb-4 bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm">
               Popular Destinations
             </Badge>
-            <h2 className="text-4xl !font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl !font-bold text-gray-900 mb-3 sm:mb-4">
               Where Do You Want to Go?
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
               Explore our most popular routes across Cameroon with competitive prices and comfortable buses.
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {routes.map((route, index) => (
               <Card 
                 key={index} 
-                className="overflow-hidden border-none shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+                className="overflow-hidden border-none shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col"
               >
-                <div className="relative h-48">
+                {/* Image Container - Fixed aspect ratio */}
+                <div className="relative h-48 flex-shrink-0">
                   <img 
                     src={route.image} 
                     alt={`${route.from} to ${route.to}`}
@@ -416,7 +417,8 @@ export function Landing() {
                     <p className="text-sm opacity-90 mt-1">{route.trips}</p>
                   </div>
                 </div>
-                <CardContent className="p-6 space-y-4">
+                {/* Content Container - Always visible below image */}
+                <div className="p-6 space-y-4 flex-grow">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Clock className="w-4 h-4" />
@@ -428,12 +430,12 @@ export function Landing() {
                     <p className="text-xs text-gray-500">Starting from</p>
                     <p className="!text-2xl !font-bold text-blue-600">{route.price}</p>
                   </div>
-                  <Link to="/signup" className="block">
+                  <Link to="/signup" className="block mt-auto">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
                       Book Now
                     </Button>
                   </Link>
-                </CardContent>
+                </div>
               </Card>
             ))}
           </div>
@@ -573,30 +575,42 @@ export function Landing() {
       </section>
 
       {/* 9. FOOTER */}
-      <footer id="contact" className="bg-gray-900 text-gray-300 py-16">
+      <footer id="contact" className="bg-gray-900 text-gray-300 py-10 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-8 md:mb-12">
             {/* Column 1: About */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <img 
                   src={logoImage} 
                   alt="CamTransit Logo" 
-                  className="w-10 h-10 object-contain"
+                  className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
                 />
-                <span className="text-xl font-semibold text-white">CamTransit</span>
+                <span className="text-lg sm:text-xl font-semibold text-white">CamTransit</span>
               </div>
               <p className="text-sm text-gray-400 mb-4">
                 Your trusted partner for comfortable and affordable bus travel across Cameroon.
               </p>
               <div className="flex gap-4">
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <a 
+                  href="#" 
+                  className="text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  aria-label="Facebook"
+                >
                   <Facebook className="w-5 h-5" />
                 </a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <a 
+                  href="#" 
+                  className="text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  aria-label="Twitter"
+                >
                   <Twitter className="w-5 h-5" />
                 </a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <a 
+                  href="#" 
+                  className="text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                  aria-label="Instagram"
+                >
                   <Instagram className="w-5 h-5" />
                 </a>
               </div>
@@ -607,20 +621,20 @@ export function Landing() {
               <h4 className="text-white !font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2">
                 <li>
-                  <button 
-                    onClick={() => scrollToSection('features')}
+                  <Link 
+                    to="#features"
                     className="text-gray-400 hover:text-white transition-colors text-sm"
                   >
                     Features
-                  </button>
+                  </Link>
                 </li>
                 <li>
-                  <button 
-                    onClick={() => scrollToSection('routes')}
+                  <Link 
+                    to="#routes"
                     className="text-gray-400 hover:text-white transition-colors text-sm"
                   >
                     Routes
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <Link to="/signup" className="text-gray-400 hover:text-white transition-colors text-sm">
@@ -640,24 +654,24 @@ export function Landing() {
               <h4 className="text-white !font-semibold mb-4">Support</h4>
               <ul className="space-y-2">
                 <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/help-support" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Help Center
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/terms-of-service" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Terms of Service
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/privacy-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/refund-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Refund Policy
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -667,23 +681,23 @@ export function Landing() {
               <h4 className="text-white !font-semibold mb-4">Contact Us</h4>
               <ul className="space-y-3">
                 <li className="flex items-center gap-2 text-sm">
-                  <Phone className="w-4 h-4" />
+                  <Phone className="w-4 h-4 flex-shrink-0" />
                   <span>+237 680641043</span>
                 </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <Mail className="w-4 h-4" />
-                  <span>investorhonourable01@gmail.com</span>
+                <li className="flex items-start gap-2 text-sm">
+                  <Mail className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span className="break-all">investorhonourable01@gmail.com</span>
                 </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4" />
+                <li className="flex items-start gap-2 text-sm">
+                  <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <span>Yaoundé-Bastos, Cameroon</span>
                 </li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-            <p>© 2026 CamerTransit. All rights reserved. Made with ❤️ in Cameroon.</p>
+          <div className="border-t border-gray-800 pt-6 md:pt-8 text-center text-xs sm:text-sm text-gray-500">
+            <p>© 2026 CamTransit. All rights reserved. Made with ❤️ in Cameroon.</p>
           </div>
         </div>
       </footer>

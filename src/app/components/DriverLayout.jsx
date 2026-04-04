@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.jsx";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export function DriverLayout() {
   const { t } = useTranslation();
@@ -34,6 +34,53 @@ export function DriverLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  
+  // Real notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifs, setIsLoadingNotifs] = useState(true);
+
+  // Fetch notifications from API
+  const fetchNotifications = useCallback(async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const response = await fetch("/api/notifications.php?action=list", {
+        headers: { 'User-ID': currentUser.id }
+      });
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unread_count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setIsLoadingNotifs(false);
+    }
+  }, [currentUser?.id]);
+
+  // Mark notification as read
+  const markAsRead = async (notificationId) => {
+    try {
+      await fetch("/api/notifications.php?action=mark_read", {
+        method: 'PUT',
+        headers: { 
+          'User-ID': currentUser.id,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notification_id: notificationId, user_id: currentUser.id })
+      });
+      
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
 
   useEffect(() => {
     // Get current user from localStorage
@@ -42,6 +89,27 @@ export function DriverLayout() {
       setCurrentUser(JSON.parse(user));
     }
   }, []);
+
+  // Fetch notifications when user changes
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchNotifications();
+      
+      // Poll every 30 seconds for real-time updates
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser?.id, fetchNotifications]);
+
+  // Listen for notification refresh events from other pages
+  useEffect(() => {
+    const handleNotificationRefresh = () => {
+      fetchNotifications();
+    };
+    
+    window.addEventListener('refresh-notifications', handleNotificationRefresh);
+    return () => window.removeEventListener('refresh-notifications', handleNotificationRefresh);
+  }, [fetchNotifications]);
 
   const handleLogout = () => {
     localStorage.removeItem("busfare_current_user");
@@ -166,7 +234,11 @@ export function DriverLayout() {
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("/dashboard/driver/notifications")}>
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-orange-500 rounded-full" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full text-white text-xs flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Button>
 
               {/* User menu */}

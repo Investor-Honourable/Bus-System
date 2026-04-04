@@ -47,7 +47,10 @@ export function Drivers() {
     email: "",
     password: "",
     phone: "",
-    license_number: ""
+    license_number: "",
+    license_type: "",
+    gender: "",
+    license_expiry: ""
   });
   const [assignment, setAssignment] = useState({
     route_id: "",
@@ -182,21 +185,25 @@ export function Drivers() {
           email: newDriver.email,
           password: newDriver.password,
           phone: newDriver.phone,
+          gender: newDriver.gender || null,
           license_number: newDriver.license_number || 'DL' + Date.now(),
-          license_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          license_expiry: newDriver.license_expiry || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          license_type: newDriver.license_type || 'Class B'
         }),
       });
       const data = await response.json();
       if (data.status === 'success' || data.message) {
-        setNewDriver({ username: "", email: "", password: "", phone: "", license_number: "" });
+        setNewDriver({ username: "", email: "", password: "", phone: "", license_number: "", license_type: "", gender: "", license_expiry: "" });
         setIsAddDialogOpen(false);
         fetchData();
+        // Use alert for now as toast might not be imported
+        alert("Driver added successfully!");
       } else {
         setError(data.message || "Failed to add driver");
       }
     } catch (err) {
       console.error("Error adding driver:", err);
-      setError("Failed to add driver");
+      setError("Failed to add driver. Please try again.");
     } finally {
       setIsSaving(false);
     }

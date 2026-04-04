@@ -84,7 +84,7 @@ export function AdminLayout() {
           'User-ID': currentUser.id,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ id: notificationId })
+        body: JSON.stringify({ notification_id: notificationId, user_id: currentUser.id })
       });
       
       setNotifications(prev => 
@@ -104,7 +104,8 @@ export function AdminLayout() {
         headers: { 
           'User-ID': currentUser.id,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ user_id: currentUser.id })
       });
       
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -124,6 +125,16 @@ export function AdminLayout() {
       return () => clearInterval(interval);
     }
   }, [currentUser?.id, fetchNotifications]);
+
+  // Listen for notification refresh events from other pages
+  useEffect(() => {
+    const handleNotificationRefresh = () => {
+      fetchNotifications();
+    };
+    
+    window.addEventListener('refresh-notifications', handleNotificationRefresh);
+    return () => window.removeEventListener('refresh-notifications', handleNotificationRefresh);
+  }, [fetchNotifications]);
 
   const handleLogout = () => {
     localStorage.removeItem("busfare_current_user");

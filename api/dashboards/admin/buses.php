@@ -78,11 +78,11 @@ if ($method === 'PUT') {
     
     $id = $data['id'] ?? 0;
     $bus_number = $data['bus_number'] ?? '';
-    $bus_name = $data['bus_name'] ?? '';
+    $bus_name = $data['bus_name'] ?? $data['bus_number'] ?? '';
     $bus_type = $data['bus_type'] ?? 'standard';
     $total_seats = intval($data['total_seats'] ?? $data['capacity'] ?? 0);
     $amenities = json_encode($data['amenities'] ?? []);
-    $license_plate = $data['license_plate'] ?? '';
+    $license_plate = $data['license_plate'] ?? 'CE-' . strtoupper(substr($bus_number, -3)) . '-AA';
     $model = $data['model'] ?? '';
     $year = $data['year'] ?? null;
     $color = $data['color'] ?? '';

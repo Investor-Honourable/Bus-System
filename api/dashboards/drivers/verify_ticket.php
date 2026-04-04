@@ -26,11 +26,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $data = json_decode(file_get_contents("php://input"), true);
 
 $ticket_code = $data['ticket_code'] ?? '';
+$booking_ref = $data['booking_ref'] ?? ''; // Also accept booking reference
 $user_id = $data['user_id'] ?? 0;
 
-if (!$ticket_code || !$user_id) {
+// Allow either ticket_code or booking_ref
+if ((!$ticket_code && !$booking_ref) || !$user_id) {
     echo json_encode(['status' => 'error', 'message' => 'Ticket code and User ID required']);
     exit;
+}
+
+// Use booking_ref as fallback if ticket_code is empty
+if (!$ticket_code && $booking_ref) {
+    $ticket_code = $booking_ref;
 }
 
 try {

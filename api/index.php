@@ -130,6 +130,7 @@ if ($action === 'get_trips') {
     $origin = $data['origin'] ?? '';
     $destination = $data['destination'] ?? '';
     $date = $data['date'] ?? '';
+    $route_id = $data['route_id'] ?? 0;
     
     $sql = "SELECT t.*, r.origin, r.destination, r.distance_km, r.duration_minutes, r.route_code,
             b.bus_number, b.bus_name, b.bus_type, b.amenities, b.license_plate,
@@ -144,15 +145,23 @@ if ($action === 'get_trips') {
     $params = [];
     $types = "";
     
-    if ($origin) {
-        $sql .= " AND r.origin LIKE ?";
-        $params[] = "%$origin%";
-        $types .= "s";
-    }
-    if ($destination) {
-        $sql .= " AND r.destination LIKE ?";
-        $params[] = "%$destination%";
-        $types .= "s";
+    // Filter by route_id if provided (most specific filter)
+    if ($route_id > 0) {
+        $sql .= " AND t.route_id = ?";
+        $params[] = $route_id;
+        $types .= "i";
+    } else {
+        // Otherwise use origin/destination filters
+        if ($origin) {
+            $sql .= " AND r.origin LIKE ?";
+            $params[] = "%$origin%";
+            $types .= "s";
+        }
+        if ($destination) {
+            $sql .= " AND r.destination LIKE ?";
+            $params[] = "%$destination%";
+            $types .= "s";
+        }
     }
     if ($date) {
         $sql .= " AND t.departure_date = ?";

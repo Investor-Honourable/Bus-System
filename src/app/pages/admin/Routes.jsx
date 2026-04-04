@@ -21,7 +21,7 @@ export function Routes() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [newRoute, setNewRoute] = useState({ origin: "", destination: "", distance_km: "", duration_minutes: "" });
+  const [newRoute, setNewRoute] = useState({ origin: "", destination: "", distance_km: "", duration_minutes: "", route_code: "", base_price: "" });
 
   useEffect(() => {
     fetchRoutes();
@@ -48,21 +48,43 @@ export function Routes() {
   };
 
   const createRoute = async () => {
-    if (!newRoute.origin || !newRoute.destination) return;
+    // Generate route_code if not provided
+    const originCode = newRoute.origin?.substring(0, 3).toUpperCase() || '';
+    const destCode = newRoute.destination?.substring(0, 3).toUpperCase() || '';
+    const routeCode = newRoute.route_code || `${originCode}-${destCode}`;
+    
+    if (!newRoute.origin || !newRoute.destination) {
+      alert("Please fill in origin and destination");
+      return;
+    }
+    
     try {
+      // Map to backend format with all required fields
+      const routeData = {
+        route_code: routeCode,
+        origin: newRoute.origin,
+        destination: newRoute.destination,
+        distance_km: parseFloat(newRoute.distance_km) || 0,
+        duration_minutes: parseInt(newRoute.duration_minutes) || 0,
+        base_price: parseFloat(newRoute.base_price) || 1000
+      };
+      
       const response = await fetch("/api/dashboards/admin/routes.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newRoute),
+        body: JSON.stringify(routeData),
       });
       const data = await response.json();
-      if (data.message) {
-        setNewRoute({ origin: "", destination: "", distance_km: "", duration_minutes: "" });
+      if (data.status === 'success' || data.message) {
+        setNewRoute({ origin: "", destination: "", distance_km: "", duration_minutes: "", route_code: "", base_price: "" });
         setIsAddDialogOpen(false);
         fetchRoutes();
+      } else {
+        alert(data.message || "Failed to add route");
       }
     } catch (error) {
       console.error("Error creating route:", error);
+      alert("Failed to create route. Please try again.");
     }
   };
 
@@ -334,6 +356,25 @@ export function Routes() {
                   placeholder="e.g. 240"
                   value={newRoute.duration_minutes}
                   onChange={(e) => setNewRoute({ ...newRoute, duration_minutes: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Route Code</Label>
+                <Input
+                  placeholder="e.g. DLA-YDE"
+                  value={newRoute.route_code}
+                  onChange={(e) => setNewRoute({ ...newRoute, route_code: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Base Price (XAF)</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 2500"
+                  value={newRoute.base_price}
+                  onChange={(e) => setNewRoute({ ...newRoute, base_price: e.target.value })}
                 />
               </div>
             </div>

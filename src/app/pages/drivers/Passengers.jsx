@@ -51,12 +51,13 @@ export default function TripPassengers() {
       const response = await fetch("/api/dashboards/drivers/trip_passengers.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trip_id: tripId, driver_id: user.id })
+        body: JSON.stringify({ trip_id: tripId, user_id: user.id })
       });
       const data = await response.json();
       
       if (data.status === "success") {
-        setPassengers(data.data || []);
+        // API returns passengers in 'passengers' array
+        setPassengers(data.passengers || data.data || []);
         setError("");
       } else {
         console.error("Error fetching passengers:", data.message);
@@ -76,9 +77,11 @@ export default function TripPassengers() {
   };
 
   const filteredPassengers = passengers.filter(p => 
+    p.passenger_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.passenger_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.passenger_phone?.includes(searchTerm) ||
     p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone?.includes(searchTerm)
+    p.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status) => {
@@ -196,10 +199,10 @@ export default function TripPassengers() {
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
                               <span className="text-sm font-medium text-orange-700">
-                                {passenger.name?.charAt(0) || "P"}
+                                {passenger.passenger_name?.charAt(0) || passenger.name?.charAt(0) || "P"}
                               </span>
                             </div>
-                            <span className="font-medium">{passenger.name || "Unknown"}</span>
+                            <span className="font-medium">{passenger.passenger_name || passenger.name || "Unknown"}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -210,10 +213,10 @@ export default function TripPassengers() {
                                 {passenger.phone}
                               </div>
                             )}
-                            {passenger.email && (
+                            {passenger.passenger_email && (
                               <div className="flex items-center gap-1 text-sm text-gray-600">
                                 <Mail className="w-3 h-3" />
-                                <span className="truncate max-w-[150px]">{passenger.email}</span>
+                                <span className="truncate max-w-[150px]">{passenger.passenger_email || passenger.email}</span>
                               </div>
                             )}
                           </div>

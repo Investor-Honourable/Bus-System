@@ -104,7 +104,8 @@ export function Layout() {
         headers: { 
           'User-ID': currentUser.id,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ user_id: currentUser.id })
       });
       
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -129,8 +130,17 @@ export function Layout() {
       }
     };
     
+    // Listen for notification refresh events from other pages
+    const handleNotificationRefresh = () => {
+      fetchNotifications();
+    };
+    
     window.addEventListener('user-profile-updated', handleProfileUpdate);
-    return () => window.removeEventListener('user-profile-updated', handleProfileUpdate);
+    window.addEventListener('refresh-notifications', handleNotificationRefresh);
+    return () => {
+      window.removeEventListener('user-profile-updated', handleProfileUpdate);
+      window.removeEventListener('refresh-notifications', handleNotificationRefresh);
+    };
   }, []);
 
   // Fetch notifications when user changes

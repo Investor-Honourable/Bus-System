@@ -43,7 +43,14 @@ if ($method === 'GET') {
                 $notifications[] = $row;
             }
             
-            echo json_encode(['status' => 'success', 'notifications' => $notifications]);
+            // Get unread count
+            $unread_stmt = $conn->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE");
+            $unread_stmt->bind_param("i", $user_id);
+            $unread_stmt->execute();
+            $unread_result = $unread_stmt->get_result();
+            $unread_count = $unread_result->fetch_assoc()['count'];
+            
+            echo json_encode(['status' => 'success', 'notifications' => $notifications, 'unread_count' => (int)$unread_count]);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => 'Failed to fetch notifications: ' . $e->getMessage()]);
         }

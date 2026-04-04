@@ -35,6 +35,7 @@ export function Trips() {
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [tripPassengers, setTripPassengers] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [driversLoading, setDriversLoading] = useState(false);
   const [isAssignDriverDialogOpen, setIsAssignDriverDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState("");
   const [newSchedule, setNewSchedule] = useState({
@@ -44,7 +45,8 @@ export function Trips() {
     departure_time: "",
     arrival_time: "",
     price: "",
-    status: "scheduled"
+    status: "scheduled",
+    driver_id: ""
   });
 
   useEffect(() => {
@@ -140,10 +142,24 @@ export function Trips() {
     try {
       console.log("Sending trip data:", JSON.stringify(newSchedule));
       
+      // Map frontend fields to backend expected fields
+      const tripData = {
+        route_id: parseInt(newSchedule.route_id),
+        bus_id: parseInt(newSchedule.bus_id),
+        departure_date: newSchedule.date,  // Map 'date' to 'departure_date'
+        departure_time: newSchedule.departure_time,
+        arrival_time: newSchedule.arrival_time,
+        price: parseFloat(newSchedule.price),
+        driver_id: newSchedule.driver_id || null,
+        status: newSchedule.status || 'scheduled'
+      };
+      
+      console.log("Mapped trip data:", JSON.stringify(tripData));
+      
       const response = await fetch("/api/dashboards/admin/schedules.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newSchedule),
+        body: JSON.stringify(tripData),
       });
       
       console.log("Response status:", response.status);
@@ -180,8 +196,8 @@ export function Trips() {
       
       console.log("Response data:", data);
       
-      if (data.message || data.success) {
-        setNewSchedule({ route_id: "", bus_id: "", date: "", departure_time: "", arrival_time: "", price: "", status: "scheduled" });
+      if (data.status === 'success' || data.message || data.success) {
+        setNewSchedule({ route_id: "", bus_id: "", date: "", departure_time: "", arrival_time: "", price: "", status: "scheduled", driver_id: "" });
         setIsAddDialogOpen(false);
         fetchData();
         alert("Trip created successfully!");
@@ -299,9 +315,13 @@ export function Trips() {
   const fetchTripPassengers = async (trip) => {
     setSelectedTrip(trip);
     try {
-      const response = await fetch(`/api/dashboards/drivers/trip_passengers.php?schedule_id=${trip.schedule_id}`);
+      // Use the admin assign_passenger.php API to get passengers for a trip
+      const tripId = trip.schedule_id || trip.id || trip.trip_id;
+      const response = await fetch(`/api/dashboards/admin/assign_passenger.php?trip_id=${tripId}`);
       const data = await response.json();
-      if (data.data) {
+      if (data.passengers && Array.isArray(data.passengers)) {
+        setTripPassengers(data.passengers);
+      } else if (data.data) {
         setTripPassengers(data.data);
       } else {
         setTripPassengers([]);
@@ -314,21 +334,27 @@ export function Trips() {
   };
 
   const fetchDrivers = async () => {
+    setDriversLoading(true);
     try {
       const response = await fetch("/api/dashboards/admin/assign_driver.php");
       const data = await response.json();
-      if (data.data) {
+      if (data.drivers && Array.isArray(data.drivers)) {
+        setDrivers(data.drivers);
+      } else if (data.data && Array.isArray(data.data)) {
         setDrivers(data.data);
       }
     } catch (error) {
       console.error("Error fetching drivers:", error);
+      setDrivers([]);
+    } finally {
+      setDriversLoading(false);
     }
   };
 
   const openAssignDriverDialog = async (trip) => {
     setSelectedTrip(trip);
-    await fetchDrivers();
-    setIsAssignDriverDialogOpen(true);
+    setIsAssignDriverDialogOpen(true); // Open dialog first
+    await fetchDrivers(); // Then fetch drivers
   };
 
   const assignDriver = async () => {
@@ -918,14 +944,14 @@ export function Trips() {
                     <tbody>
                       {tripPassengers.map((passenger, index) => (
                         <tr key={index} className="border-b">
-                          <td className="py-2 px-3">{passenger.name || passenger.passenger_name}</td>
-                          <td className="py-2 px-3">{passenger.email || passenger.passenger_email}</td>
-                          <td className="py-2 px-3">{passenger.seat_number || '-'}</td>
+                          <td className="py-2 px-3">{passenger.passenger_name || passenger.name}</td>
+                          <td className="py-2 px-3">{passenger.passenger_email || passenger.email}</td>
+                          <td className="py-2 px-3">{passenger.seat_numbers || passenger.seat_number || '-'}</td>
                           <td className="py-2 px-3">
                             <span className={`px-2 py-1 text-xs rounded-full ${
-                              passenger.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                              passenger.booking_status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                             }`}>
-                              {passenger.status || 'confirmed'}
+                              {passenger.booking_status || 'confirmed'}
                             </span>
                           </td>
                         </tr>
@@ -958,21 +984,30 @@ export function Trips() {
               </div>
               <div className="space-y-2">
                 <Label>Select Driver</Label>
-                <Select
-                  value={selectedDriver}
-                  onValueChange={setSelectedDriver}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a driver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {drivers.map((driver) => (
-                      <SelectItem key={driver.id} value={String(driver.id)}>
-                        {driver.name || driver.username} - {driver.license_number}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {driversLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading drivers...
+                  </div>
+                ) : drivers.length > 0 ? (
+                  <Select
+                    value={selectedDriver}
+                    onValueChange={setSelectedDriver}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a driver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers.map((driver) => (
+                        <SelectItem key={driver.id} value={String(driver.id)}>
+                          {driver.name || driver.username} - {driver.license_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-gray-500">No active drivers available</div>
+                )}
               </div>
             </div>
           )}
