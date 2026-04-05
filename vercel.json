@@ -4,20 +4,16 @@
     {
       "src": "dist/**",
       "use": "@vercel/static"
-    },
-    {
-      "src": "api/**/*.php",
-      "use": "@vercel/php"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "destination": "/api/index.php"
     },
     {
       "src": "/(.*)",
-      "dist": "/dist/$1"
+      "destination": "/dist/$1"
     }
   ]
 }
