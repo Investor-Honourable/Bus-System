@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input.jsx";
 import { Label } from "../components/ui/label.jsx";
 import { Checkbox } from "../components/ui/checkbox.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
+import logoImage from "../../assets/CamTransit.png";
 import { useTranslation } from "../i18n/LanguageContext.jsx";
 import {
   DropdownMenu,
@@ -168,7 +169,7 @@ export function Login() {
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <img 
-              src="/src/assets/CamTransit.png" 
+              src={logoImage} 
               alt="CamTransit Logo" 
               className="w-48 sm:w-56 md:w-64 lg:w-72 h-auto mx-auto -mb-12 sm:-mb-16 md:-mb-20 object-contain"
             />
