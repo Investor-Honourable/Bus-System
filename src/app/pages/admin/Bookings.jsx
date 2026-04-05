@@ -155,7 +155,7 @@ export function Bookings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ticket Control</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Ticket Control</h1>
           <p className="text-gray-600 mt-1">View and manage all bookings</p>
         </div>
       </div>
@@ -163,35 +163,35 @@ export function Bookings() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Bookings</p>
-                <p className="text-2xl font-bold">{bookings.length}</p>
+                <p className="text-xl md:text-2xl font-bold">{bookings.length}</p>
               </div>
-              <Ticket className="w-8 h-8 text-blue-600" />
+              <Ticket className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Confirmed</p>
-                <p className="text-2xl font-bold">{bookings.filter(b => b.booking_status === "confirmed").length}</p>
+                <p className="text-xl md:text-2xl font-bold">{bookings.filter(b => b.booking_status === "confirmed").length}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold">{bookings.filter(b => b.booking_status === "pending").length}</p>
+                <p className="text-xl md:text-2xl font-bold">{bookings.filter(b => b.booking_status === "pending").length}</p>
               </div>
-              <Ticket className="w-8 h-8 text-yellow-600" />
+              <Ticket className="w-6 h-6 md:w-8 md:h-8 text-yellow-600" />
             </div>
           </CardContent>
         </Card>

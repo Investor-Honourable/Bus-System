@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { 
   Bus, 
@@ -14,9 +14,12 @@ import {
   Instagram,
   CheckCircle,
   Menu,
-  X
+  X,
+  Loader2,
+  Globe
 } from "lucide-react";
 import { Button } from "../components/ui/button.jsx";
+import { LanguageSwitcher } from "../components/LanguageSwitcher.jsx";
 import { Card, CardContent } from "../components/ui/card.jsx";
 import { Badge } from "../components/ui/badge.jsx";
 import logoImage from "../../assets/CamTransit.png";
@@ -26,8 +29,85 @@ import testimonialImage2 from "../../assets/young-adult-travelling.jpg";
 
 export function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [routes, setRoutes] = useState([]);
+  const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
+  const [activeNav, setActiveNav] = useState("home");
 
-  const scrollToSection = (sectionId) => {
+  useEffect(() => {
+    fetchRoutes();
+  }, []);
+
+  useEffect(() => {
+    const storedLang = localStorage.getItem('app_language');
+    if (storedLang && window.i18nTranslations?.[storedLang]) {
+      setTimeout(() => {
+        const trans = window.i18nTranslations[storedLang];
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (trans[key]) {
+            el.textContent = trans[key];
+          }
+        });
+      }, 500);
+    }
+  }, []);
+
+  const handleNavClick = (section) => {
+    setActiveNav(section);
+    if (section !== 'home') {
+      scrollToSection(section);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const fetchRoutes = async () => {
+    setIsLoadingRoutes(true);
+    try {
+      const response = await fetch("/api/index.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_trips" })
+      });
+      const data = await response.json();
+      if (data.status === "success" && data.trips) {
+        const routesMap = {};
+        data.trips.forEach(trip => {
+          const key = `${trip.origin}-${trip.destination}`;
+          if (!routesMap[key]) {
+            routesMap[key] = {
+              from: trip.origin,
+              to: trip.destination,
+              price: trip.price,
+              duration: formatDuration(parseInt(trip.duration_minutes || 180)),
+              trips: 1,
+              rating: 4.5 + Math.random() * 0.5,
+              seats: trip.available_seats || 15,
+              image: heroImage
+            };
+          } else {
+            routesMap[key].trips++;
+          }
+        });
+        const formattedRoutes = Object.values(routesMap).slice(0, 6);
+        setRoutes(formattedRoutes);
+      }
+    } catch (err) {
+      console.error("Error fetching routes:", err);
+    } finally {
+      setIsLoadingRoutes(false);
+    }
+  };
+
+  const formatDuration = (minutes) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
+    if (hrs > 0) return `${hrs}h 00m`;
+    return `${mins}m`;
+  };
+
+const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -35,7 +115,7 @@ export function Landing() {
     setMobileMenuOpen(false);
   };
 
-  const routes = [
+const defaultRoutes = [
     {
       from: "Douala",
       to: "Yaoundé",
@@ -45,58 +125,10 @@ export function Landing() {
       rating: 4.8,
       seats: 12,
       image: heroImage
-    },
-    {
-      from: "Yaoundé",
-      to: "Bafoussam",
-      price: "5,000 XAF",
-      duration: "4h 15m",
-      trips: "10 trips/day",
-      rating: 4.9,
-      seats: 8,
-      image: testimonialImage1
-    },
-    {
-      from: "Douala",
-      to: "Limbe",
-      price: "2,000 XAF",
-      duration: "1h 30m",
-      trips: "20 trips/day",
-      rating: 4.9,
-      seats: 5,
-      image: testimonialImage2
-    },
-    {
-      from: "Yaoundé",
-      to: "Garoua",
-      price: "12,500 XAF",
-      duration: "12h 00m",
-      trips: "4 trips/day",
-      rating: 4.7,
-      seats: 15,
-      image: heroImage
-    },
-    {
-      from: "Bafoussam",
-      to: "Bamenda",
-      price: "3,000 XAF",
-      duration: "2h 00m",
-      trips: "8 trips/day",
-      rating: 4.6,
-      seats: 20,
-      image: testimonialImage1
-    },
-    {
-      from: "Douala",
-      to: "Kribi",
-      price: "3,500 XAF",
-      duration: "3h 00m",
-      trips: "12 trips/day",
-      rating: 4.8,
-      seats: 10,
-      image: testimonialImage2
     }
   ];
+
+  const displayRoutes = routes.length > 0 ? routes : defaultRoutes;
 
   const testimonials = [
     {
@@ -124,40 +156,49 @@ export function Landing() {
       {/* 1. STICKY NAVIGATION BAR */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+<div className="flex justify-between items-center h-20 sm:h-24">
             {/* Logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               <img 
                 src={logoImage} 
                 alt="CamTransit Logo" 
-                className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                className="w-40 h-40 sm:w-44 sm:h-44 md:w-48 md:h-48 object-contain"
               />
-              <span className="text-lg sm:text-xl font-semibold">CamTransit</span>
             </div>
 
             {/* Center Navigation - Desktop */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center justify-center flex-1 gap-1 px-4">
               <button 
-                onClick={() => scrollToSection('features')}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                onClick={() => handleNavClick('home')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeNav === 'home' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
+              >
+                Home
+              </button>
+<button 
+                onClick={() => handleNavClick('features')}
+                data-nav="features"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeNav === 'features' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
               >
                 Features
               </button>
               <button 
-                onClick={() => scrollToSection('routes')}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                onClick={() => handleNavClick('routes')}
+                data-nav="routes"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeNav === 'routes' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
               >
                 Routes
               </button>
               <button 
-                onClick={() => scrollToSection('testimonials')}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                onClick={() => handleNavClick('testimonials')}
+                data-nav="testimonials"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeNav === 'testimonials' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
               >
                 Testimonials
               </button>
               <button 
-                onClick={() => scrollToSection('contact')}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                onClick={() => handleNavClick('contact')}
+                data-nav="contact"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeNav === 'contact' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'}`}
               >
                 Contact
               </button>
@@ -165,6 +206,7 @@ export function Landing() {
 
             {/* Right Side Buttons - Desktop */}
             <div className="hidden md:flex items-center gap-3">
+              <LanguageSwitcher />
               <Link to="/login">
                 <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
                   Sign In
@@ -233,49 +275,50 @@ export function Landing() {
       </nav>
 
       {/* 2. HERO SECTION */}
-      <section className="pt-20 sm:pt-24 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8">
+      <section className="pt-28 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Text Content */}
-            <div className="space-y-6 sm:space-y-8">
-              <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm">
-                🇨🇲 Proudly Serving Cameroon
+            <div className="space-y-8 sm:space-y-10 text-center sm:text-left">
+              <Badge data-i18n="landing.badge" className="bg-blue-50 text-blue-700 border-blue-200 text-sm sm:text-base px-5 py-2 font-semibold">
+                🇨🇲 Cameroon #1 Bus Booking Platform
               </Badge>
               
-              <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl !font-bold !leading-tight">
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Travel Across Cameroon with Comfort & Safety
-                </span>
-              </h1>
+              <div className="py-3 overflow-hidden">
+                <h1 data-i18n="landing.hero_title" style={{ fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', lineHeight: 1.6, letterSpacing: '0.03em', whiteSpace: 'nowrap', maxWidth: '100%' }} className="!font-bold text-blue-700 truncate">
+                  Travel Across Cameroon — With Comfort & Safety
+                </h1>
+              </div>
               
-              <p className="text-base sm:text-xl text-gray-600 !leading-relaxed">
+              <p data-i18n="landing.hero_desc" className="text-xl sm:text-2xl text-gray-600 !leading-relaxed font-medium max-w-xl mx-auto sm:mx-0">
                 Book your bus tickets in seconds. Experience modern, reliable, and affordable travel across all major cities in Cameroon.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center sm:justify-start">
                 <Link to="/signup">
-                  <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+                  <Button data-i18n="landing.cta_primary" size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl shadow-blue-600/25">
                     Book Your Trip Now
-                    <ArrowRight className="ml-2 w-4 sm:w-5 h-4 sm:h-5" />
+                    <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
                 <Button 
+                  data-i18n="landing.cta_secondary"
                   variant="outline" 
                   size="lg"
                   onClick={() => scrollToSection('routes')}
-                  className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto text-lg px-8 py-6 border-2 border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  View Routes
+                  Explore Routes
                 </Button>
               </div>
               
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-4 pt-4">
                 <div className="flex gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 sm:w-5 h-4 sm:h-5 fill-yellow-400 text-yellow-400" />
+                    <Star key={i} className="w-5 sm:w-6 h-5 sm:h-6 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <span className="text-xs sm:text-sm text-gray-600 font-medium">4.8/5 from 2,500+ travelers</span>
+                <span data-i18n="landing.rating_text" className="text-base sm:text-lg text-gray-700 font-semibold">4.8/5 from 10,000+ happy travelers</span>
               </div>
             </div>
             
@@ -310,10 +353,10 @@ export function Landing() {
             <Badge className="mb-4 bg-blue-50 text-blue-700 border-blue-200">
               Why Choose Us
             </Badge>
-            <h2 className="text-4xl !font-bold text-gray-900 mb-4">
+            <h2 data-i18n="landing.features_title" className="text-4xl !font-bold text-gray-900 mb-4">
               Travel Made Simple & Safe
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p data-i18n="landing.features_desc" className="text-xl text-gray-600 max-w-2xl mx-auto">
               Experience the best bus booking platform in Cameroon with modern features designed for your comfort.
             </p>
           </div>
@@ -325,8 +368,8 @@ export function Landing() {
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
                   <Clock className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Instant Booking</h3>
-                <p className="text-gray-600">
+                <h3 data-i18n="landing.feature_instant_title" className="text-xl font-semibold text-gray-900">Instant Booking</h3>
+                <p data-i18n="landing.feature_instant_desc" className="text-gray-600">
                   Book your tickets in under 2 minutes. No queues, no hassle.
                 </p>
               </CardContent>
@@ -338,8 +381,8 @@ export function Landing() {
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">100% Secure</h3>
-                <p className="text-gray-600">
+                <h3 data-i18n="landing.feature_secure_title" className="text-xl font-semibold text-gray-900">100% Secure</h3>
+                <p data-i18n="landing.feature_secure_desc" className="text-gray-600">
                   Your payment and personal data are protected with top-tier security.
                 </p>
               </CardContent>
@@ -351,8 +394,8 @@ export function Landing() {
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                   <Bus className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Modern Fleet</h3>
-                <p className="text-gray-600">
+                <h3 data-i18n="landing.feature_fleet_title" className="text-xl font-semibold text-gray-900">Modern Fleet</h3>
+                <p data-i18n="landing.feature_fleet_desc" className="text-gray-600">
                   Travel in comfort with our modern, air-conditioned buses.
                 </p>
               </CardContent>
@@ -364,7 +407,7 @@ export function Landing() {
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center">
                   <MapPin className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Wide Coverage</h3>
+                <h3 data-i18n="landing.feature_coverage_title" className="text-xl font-semibold text-gray-900">Wide Coverage</h3>
                 <p className="text-gray-600">
                   Connect to all major cities across Cameroon with ease.
                 </p>
@@ -381,16 +424,21 @@ export function Landing() {
             <Badge className="mb-3 sm:mb-4 bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm">
               Popular Destinations
             </Badge>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl !font-bold text-gray-900 mb-3 sm:mb-4">
+            <h2 data-i18n="landing.routes_title" className="text-2xl sm:text-3xl md:text-4xl !font-bold text-gray-900 mb-3 sm:mb-4">
               Where Do You Want to Go?
             </h2>
-            <p className="text-sm sm:text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
+            <p data-i18n="landing.routes_desc" className="text-sm sm:text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
               Explore our most popular routes across Cameroon with competitive prices and comfortable buses.
             </p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {routes.map((route, index) => (
+            {isLoadingRoutes ? (
+              <div className="col-span-3 text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
+                <p className="mt-2 text-gray-500">Loading routes...</p>
+              </div>
+            ) : displayRoutes.map((route, index) => (
               <Card 
                 key={index} 
                 className="overflow-hidden border-none shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col"
@@ -438,6 +486,7 @@ export function Landing() {
                 </div>
               </Card>
             ))}
+            )}
           </div>
         </div>
       </section>
@@ -449,10 +498,10 @@ export function Landing() {
             <Badge className="mb-4 bg-blue-50 text-blue-700 border-blue-200">
               Simple Process
             </Badge>
-            <h2 className="text-4xl !font-bold text-gray-900 mb-4">
+            <h2 data-i18n="landing.steps_title" className="text-4xl !font-bold text-gray-900 mb-4">
               Book in 3 Easy Steps
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p data-i18n="landing.steps_desc" className="text-xl text-gray-600 max-w-2xl mx-auto">
               Our streamlined booking process makes it easy to get your tickets in minutes.
             </p>
           </div>
@@ -463,8 +512,8 @@ export function Landing() {
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl !font-bold">
                 1
               </div>
-              <h3 className="!text-xl font-semibold text-gray-900">Choose Your Route</h3>
-              <p className="text-gray-600">
+              <h3 data-i18n="landing.step1_title" className="!text-xl font-semibold text-gray-900">Choose Your Route</h3>
+              <p data-i18n="landing.step1_desc" className="text-gray-600">
                 Select your departure city, destination, and travel date from our wide range of routes.
               </p>
             </div>
@@ -474,8 +523,8 @@ export function Landing() {
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl !font-bold">
                 2
               </div>
-              <h3 className="!text-xl font-semibold text-gray-900">Select Your Seat</h3>
-              <p className="text-gray-600">
+              <h3 data-i18n="landing.step2_title" className="!text-xl font-semibold text-gray-900">Select Your Seat</h3>
+              <p data-i18n="landing.step2_desc" className="text-gray-600">
                 Pick your preferred seat from our interactive seat map and view real-time availability.
               </p>
             </div>
@@ -485,7 +534,7 @@ export function Landing() {
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl !font-bold">
                 3
               </div>
-              <h3 className="!text-xl font-semibold text-gray-900">Pay & Travel</h3>
+              <h3 data-i18n="landing.step3_title" className="!text-xl font-semibold text-gray-900">Pay & Travel</h3>
               <p className="text-gray-600">
                 Complete your payment securely and receive your e-ticket instantly via email.
               </p>
@@ -498,13 +547,13 @@ export function Landing() {
       <section id="testimonials" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <Badge className="mb-4 bg-blue-50 text-blue-700 border-blue-200">
+            <Badge data-i18n="landing.testimonials_badge" className="mb-4 bg-blue-50 text-blue-700 border-blue-200">
               Customer Reviews
             </Badge>
-            <h2 className="text-4xl !font-bold text-gray-900 mb-4">
+            <h2 data-i18n="landing.testimonials_title" className="text-4xl !font-bold text-gray-900 mb-4">
               What Our Travelers Say
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p data-i18n="landing.testimonials_desc" className="text-xl text-gray-600 max-w-2xl mx-auto">
               Join thousands of satisfied travelers who trust CamerTransit for their journeys.
             </p>
           </div>
@@ -536,19 +585,19 @@ export function Landing() {
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
               <p className="text-5xl !font-bold mb-2">10K+</p>
-              <p className="text-blue-100">Happy Travelers</p>
+              <p data-i18n="landing.stats_travelers" className="text-blue-100">Happy Travelers</p>
             </div>
             <div>
               <p className="text-5xl !font-bold mb-2">50+</p>
-              <p className="text-blue-100">Routes Available</p>
+              <p data-i18n="landing.stats_routes" className="text-blue-100">Routes Available</p>
             </div>
             <div>
               <p className="text-5xl !font-bold mb-2">100+</p>
-              <p className="text-blue-100">Daily Trips</p>
+              <p data-i18n="landing.stats_trips" className="text-blue-100">Daily Trips</p>
             </div>
             <div>
               <p className="text-5xl !font-bold mb-2">4.8★</p>
-              <p className="text-blue-100">Average Rating</p>
+              <p data-i18n="landing.stats_rating" className="text-blue-100">Average Rating</p>
             </div>
           </div>
         </div>
@@ -558,14 +607,14 @@ export function Landing() {
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-12 space-y-6">
-            <h2 className="text-4xl !font-bold text-gray-900">
+            <h2 data-i18n="landing.cta_title" className="text-4xl !font-bold text-gray-900">
               Ready to Start Your Journey?
             </h2>
-            <p className="text-xl text-gray-600">
+            <p data-i18n="landing.cta_desc" className="text-xl text-gray-600">
               Join thousands of satisfied travelers across Cameroon. Book your next trip today!
             </p>
             <Link to="/signup">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+              <Button data-i18n="landing.cta_create" size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-purple-500/30 animate-pulse">
                 Create Free Account
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -580,15 +629,15 @@ export function Landing() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-8 md:mb-12">
             {/* Column 1: About */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <img 
                   src={logoImage} 
                   alt="CamTransit Logo" 
-                  className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
                 />
-                <span className="text-lg sm:text-xl font-semibold text-white">CamTransit</span>
+                <span className="text-2xl sm:text-3xl font-bold text-white">CamTransit</span>
               </div>
-              <p className="text-sm text-gray-400 mb-4">
+              <p data-i18n="landing.footer_about" className="text-sm text-gray-400 mb-4">
                 Your trusted partner for comfortable and affordable bus travel across Cameroon.
               </p>
               <div className="flex gap-4">
@@ -618,11 +667,12 @@ export function Landing() {
             
             {/* Column 2: Quick Links */}
             <div>
-              <h4 className="text-white !font-semibold mb-4">Quick Links</h4>
+              <h4 data-i18n="landing.footer_quicklinks" className="text-white !font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2">
                 <li>
                   <Link 
                     to="#features"
+                    data-i18n="landing.footer_features"
                     className="text-gray-400 hover:text-white transition-colors text-sm"
                   >
                     Features
@@ -631,18 +681,19 @@ export function Landing() {
                 <li>
                   <Link 
                     to="#routes"
+                    data-i18n="landing.footer_routes"
                     className="text-gray-400 hover:text-white transition-colors text-sm"
                   >
                     Routes
                   </Link>
                 </li>
                 <li>
-                  <Link to="/signup" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/signup" data-i18n="landing.footer_booknow" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Book Now
                   </Link>
                 </li>
                 <li>
-                  <Link to="/login" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/login" data-i18n="landing.footer_myaccount" className="text-gray-400 hover:text-white transition-colors text-sm">
                     My Account
                   </Link>
                 </li>
@@ -651,25 +702,25 @@ export function Landing() {
             
             {/* Column 3: Support */}
             <div>
-              <h4 className="text-white !font-semibold mb-4">Support</h4>
+              <h4 data-i18n="landing.footer_support" className="text-white !font-semibold mb-4">Support</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/help-support" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/help-support" data-i18n="landing.footer_helpcenter" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link to="/terms-of-service" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/terms-of-service" data-i18n="landing.footer_terms" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link to="/privacy-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/privacy-policy" data-i18n="landing.footer_privacy" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link to="/refund-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
+                  <Link to="/refund-policy" data-i18n="landing.footer_refund" className="text-gray-400 hover:text-white transition-colors text-sm">
                     Refund Policy
                   </Link>
                 </li>
@@ -678,7 +729,7 @@ export function Landing() {
             
             {/* Column 4: Contact */}
             <div>
-              <h4 className="text-white !font-semibold mb-4">Contact Us</h4>
+              <h4 data-i18n="landing.footer_contact" className="text-white !font-semibold mb-4">Contact Us</h4>
               <ul className="space-y-3">
                 <li className="flex items-center gap-2 text-sm">
                   <Phone className="w-4 h-4 flex-shrink-0" />

@@ -62,7 +62,13 @@ if ($method === 'POST') {
         $stmt->bind_param("sssissssis", $bus_number, $bus_name, $bus_type, $total_seats, $total_seats, $amenities, $license_plate, $model, $year, $color);
         
         if ($stmt->execute()) {
-            echo json_encode(['status' => 'success', 'message' => 'Bus added successfully', 'id' => $conn->insert_id]);
+            $busId = $conn->insert_id;
+            // Notify admins about new bus
+            $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id) SELECT id, 'New Bus Added', CONCAT('New bus ', ?, ' has been added to the fleet'), 'admin', 'bus', ? FROM users WHERE role = 'admin'");
+            $notifStmt->bind_param("si", $bus_number, $busId);
+            $notifStmt->execute();
+            $notifStmt->close();
+            echo json_encode(['status' => 'success', 'message' => 'Bus added successfully', 'id' => $busId]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to add bus: ' . $stmt->error]);
         }

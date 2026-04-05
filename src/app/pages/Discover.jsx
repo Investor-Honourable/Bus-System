@@ -51,6 +51,11 @@ export function Discover() {
   // Seat selection state
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [bookedSeats, setBookedSeats] = useState([]);
+  const [lastTripId, setLastTripId] = useState(() => {
+    // Try to restore from localStorage
+    const saved = localStorage.getItem('lastTripId');
+    return saved ? parseInt(saved) : null;
+  });
   const [isLoadingSeats, setIsLoadingSeats] = useState(false);
   
   // Passenger details state
@@ -413,7 +418,18 @@ export function Discover() {
       }
 
       if (data.status === "success" && data.trips && data.trips.length > 0) {
-        const trips = data.trips.map((trip, index) => ({
+        // If we have a lastTripId saved, prefer that trip
+        let sortedTrips = [...data.trips];
+        if (lastTripId) {
+          // Move the trip with lastTripId to the front
+          sortedTrips.sort((a, b) => {
+            if (a.id === lastTripId) return -1;
+            if (b.id === lastTripId) return 1;
+            return 0;
+          });
+        }
+        
+        const trips = sortedTrips.map((trip, index) => ({
           id: trip.id || index + 1,
           name: `${trip.origin} - ${trip.destination}`,
           from: trip.origin,
@@ -485,15 +501,20 @@ export function Discover() {
     setSelectedSeats([]);
     setBookingStep("seats");
     
-    // Load booked seats
-    if (trip.tripId) {
-      fetchBookedSeats(trip.tripId);
+    // Load booked seats - use tripId or id depending on what's available
+    const tripIdToUse = trip.tripId || trip.id;
+    if (tripIdToUse) {
+      // Save this tripId for future reference
+      setLastTripId(tripIdToUse);
+      localStorage.setItem('lastTripId', tripIdToUse);
+      fetchBookedSeats(tripIdToUse);
     }
   };
 
   const fetchBookedSeats = async (tripId) => {
     if (!tripId) return;
     
+    console.log('Fetching booked seats for tripId:', tripId);
     setIsLoadingSeats(true);
     try {
       const response = await fetch("/api/index.php", {
@@ -505,8 +526,10 @@ export function Discover() {
         }),
       });
       const data = await response.json();
+      console.log('Booked seats API response:', data);
       if (data.status === "success") {
         setBookedSeats(data.booked_seats || []);
+        console.log('Set booked seats to:', data.booked_seats);
         
         // Check if any of our selected seats became unavailable
         const newlyBooked = selectedSeats.filter(s => data.booked_seats.includes(s));
@@ -761,6 +784,11 @@ export function Discover() {
         setBookingSuccess(true);
         setBookingStep("confirmation");
         
+        // Save the trip ID that was used for this booking
+        const bookedTripId = selectedTrip.tripId || selectedTrip.id;
+        setLastTripId(bookedTripId);
+        localStorage.setItem('lastTripId', bookedTripId);
+        
         // Show detailed toast notifications (API already creates notifications in database)
         toast.success("🎫 Tickets issued: " + (data.booking?.tickets?.length || 0) + " ticket(s)");
         toast.info("💳 Payment receipt generated");
@@ -773,7 +801,7 @@ export function Discover() {
         const errorMessage = data.message || "Booking failed. Please try again.";
         toast.error(errorMessage);
         
-        if (data.taken_seats) {
+        if (data.taken_seats || data.conflict_seats) {
           toast.warning("Some seats are no longer available. Please select different seats.");
           fetchBookedSeats(tripId);
         }
@@ -867,8 +895,12 @@ export function Discover() {
 
   // Render bus seat layout
   const renderBusSeats = () => {
-    const totalRows = 10;
+    const totalSeats = selectedTrip?.totalSeats || selectedTrip?.total_seats || 50;
     const seatsPerRow = 5;
+    const totalRows = Math.ceil(totalSeats / seatsPerRow);
+    
+    // Debug: log the values
+    console.log('Rendering seats - totalSeats:', totalSeats, 'bookedSeats:', bookedSeats, 'tripId:', selectedTrip?.tripId || selectedTrip?.id);
     
     return (
       <div className="space-y-3">
@@ -878,7 +910,7 @@ export function Discover() {
         </div>
         
         <div className="grid grid-cols-5 gap-2 max-w-xs mx-auto">
-          {Array.from({ length: totalRows * seatsPerRow }, (_, i) => {
+          {Array.from({ length: totalSeats }, (_, i) => {
             const seatNumber = i + 1;
             const isBooked = bookedSeats.includes(seatNumber);
             const isSelected = selectedSeats.includes(seatNumber);
@@ -1491,12 +1523,16 @@ export function Discover() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => fetchBookedSeats(selectedTrip.tripId)}
+                    onClick={() => fetchBookedSeats(selectedTrip.tripId || selectedTrip.id)}
                     disabled={isLoadingSeats}
                   >
                     <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingSeats ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
+                </div>
+                {/* Debug info */}
+                <div className="text-xs text-gray-400 mb-2 p-2 bg-gray-100 rounded">
+                  Trip ID: {selectedTrip?.tripId || selectedTrip?.id} | Booked: [{bookedSeats.join(', ')}]
                 </div>
                 {isLoadingSeats ? (
                   <div className="text-center py-12">

@@ -37,11 +37,28 @@ if (!$token || !$new_password) {
     exit;
 }
 
-// Validate password length
-if (strlen($new_password) < 6) {
+// Strong password validation
+$password_errors = [];
+if (strlen($new_password) < 8) {
+    $password_errors[] = "Password must be at least 8 characters";
+}
+if (!preg_match('/[A-Z]/', $new_password)) {
+    $password_errors[] = "Password must contain at least one uppercase letter";
+}
+if (!preg_match('/[a-z]/', $new_password)) {
+    $password_errors[] = "Password must contain at least one lowercase letter";
+}
+if (!preg_match('/[0-9]/', $new_password)) {
+    $password_errors[] = "Password must contain at least one number";
+}
+if (!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $new_password)) {
+    $password_errors[] = "Password must contain at least one special character";
+}
+
+if (!empty($password_errors)) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'Password must be at least 6 characters'
+        'message' => implode(". ", $password_errors)
     ]);
     exit;
 }

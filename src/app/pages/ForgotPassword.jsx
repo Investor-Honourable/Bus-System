@@ -14,7 +14,7 @@ export function ForgotPassword() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [resetLink, setResetLink] = useState(null);
+  
 
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -50,13 +50,6 @@ export function ForgotPassword() {
 
       if (data.success) {
         setIsSuccess(true);
-        // Store reset link in both state and window for debugging
-        if (data.resetLink) {
-          setResetLink(data.resetLink);
-          window.resetLink = data.resetLink; // Save to window for debugging
-          console.log('🔗 RESET LINK:', data.resetLink);
-        }
-        console.log('API Response:', data);
       } else {
         setError(data.message || t('errors.serverError'));
       }
@@ -107,25 +100,6 @@ export function ForgotPassword() {
               {t('forgotPassword.checkSpam')}
             </p>
             
-            {/* Reset Link - Always show when available */}
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
-              <p className="text-sm text-blue-800 font-semibold mb-2">🔗 Click here to reset your password:</p>
-              <a 
-                href={resetLink || '#'}
-                className="text-sm text-blue-600 break-all hover:underline font-mono"
-                onClick={(e) => {
-                  if (!resetLink) {
-                    e.preventDefault();
-                    alert('Please check console for reset link');
-                    console.log('Reset link:', window.resetLink);
-                  }
-                }}
-              >
-                {resetLink || 'Loading...'}
-              </a>
-              {!resetLink && <p className="text-xs text-red-500 mt-2">Check browser console (F12) for link</p>}
-            </div>
-            
             <Link to="/login">
               <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 mt-6">
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -163,7 +137,7 @@ export function ForgotPassword() {
             <img 
               src="/src/assets/CamTransit.png" 
               alt="CamTransit Logo" 
-              className="w-72 h-72 mx-auto -mb-20 object-contain"
+              className="w-48 sm:w-56 md:w-64 lg:w-72 h-auto mx-auto -mb-12 sm:-mb-16 md:-mb-20 object-contain"
             />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {t('auth.forgotPassword')}

@@ -144,6 +144,19 @@ if ($method === 'DELETE') {
             $stmt->bind_param("iii", $booking['number_of_seats'], $booking['number_of_seats'], $booking['trip_id']);
             $stmt->execute();
             
+            // Notify user
+            $user_stmt = $conn->prepare("SELECT user_id FROM bookings WHERE id = ?");
+            $user_stmt->bind_param("i", $booking_id);
+            $user_stmt->execute();
+            $user_result = $user_stmt->get_result();
+            $booking_user = $user_result->fetch_assoc();
+            
+            if ($booking_user) {
+                $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id) VALUES (?, 'Booking Cancelled', 'Your booking has been cancelled by admin.', 'cancellation', 'booking', ?)");
+                $notif_stmt->bind_param("ii", $booking_user['user_id'], $booking_id);
+                $notif_stmt->execute();
+            }
+            
             echo json_encode(['status' => 'success', 'message' => 'Booking cancelled successfully']);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Booking not found']);

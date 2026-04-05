@@ -3,8 +3,10 @@ import { Bus, Users, MapPin, Clock, CheckCircle, AlertCircle, ArrowRight, Bell }
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { useNavigate } from "react-router";
+import { useTranslation } from "../../i18n/LanguageContext.jsx";
 
 export default function DriverDashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     todayTrips: 0,
@@ -122,9 +124,9 @@ export default function DriverDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-700">Today's Trips</p>
+                <p className="text-sm font-medium text-orange-700">{t('driver.todayTrips')}</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{stats.todayTrips}</p>
-                <p className="text-xs text-orange-600 mt-1">{todayTrips.length} scheduled</p>
+                <p className="text-xs text-orange-600 mt-1">{todayTrips.length} {t('driver.todaysTrip')}</p>
               </div>
               <div className="w-14 h-14 rounded-full bg-orange-200 flex items-center justify-center">
                 <Bus className="w-7 h-7 text-orange-600" />
@@ -137,9 +139,9 @@ export default function DriverDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-700">Total Passengers</p>
+                <p className="text-sm font-medium text-blue-700">{t('driver.totalPassengers')}</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalPassengers}</p>
-                <p className="text-xs text-blue-600 mt-1">all time</p>
+                <p className="text-xs text-blue-600 mt-1">{t('driver.allTime')}</p>
               </div>
               <div className="w-14 h-14 rounded-full bg-blue-200 flex items-center justify-center">
                 <Users className="w-7 h-7 text-blue-600" />
@@ -152,9 +154,9 @@ export default function DriverDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700">Completed</p>
+                <p className="text-sm font-medium text-green-700">{t('common.completed')}</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{stats.completedTrips}</p>
-                <p className="text-xs text-green-600 mt-1">trips</p>
+                <p className="text-xs text-green-600 mt-1">{t('driver.trips')}</p>
               </div>
               <div className="w-14 h-14 rounded-full bg-green-200 flex items-center justify-center">
                 <CheckCircle className="w-7 h-7 text-green-600" />
@@ -233,12 +235,12 @@ export default function DriverDashboard() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Today's Trips</CardTitle>
           <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/driver/trips")}>
-            View All
+            {t('common.viewAll')}
           </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading trips...</div>
+            <div className="text-center py-8 text-gray-500">{t('common.loadingTrips')}</div>
           ) : todayTrips.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-400" />

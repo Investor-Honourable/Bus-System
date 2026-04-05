@@ -23,30 +23,30 @@ export function Dashboard() {
   const [travelDate, setTravelDate] = useState("");
   const [stats, setStats] = useState([
     {
-      label: "Completed Trips",
+      label: t('passenger.completedTrips'),
       value: "0",
-      subtitle: "This year",
+      subtitle: t('passenger.thisYear'),
       icon: Bus,
       color: "blue",
     },
     {
-      label: "Upcoming Trips",
+      label: t('passenger.upcomingTrips'),
       value: "0",
-      subtitle: "Next 7 days",
+      subtitle: t('passenger.next7Days'),
       icon: CalendarIcon,
       color: "purple",
     },
     {
-      label: "Total Spent",
+      label: t('passenger.totalSpent'),
       value: "0",
-      subtitle: "XAF this year",
+      subtitle: t('passenger.xafThisYear'),
       icon: Ticket,
       color: "green",
     },
     {
-      label: "Favorite Route",
+      label: t('passenger.favoriteRoute'),
       value: "N/A",
-      subtitle: "Most traveled",
+      subtitle: t('passenger.mostTraveled'),
       icon: MapPin,
       color: "orange",
     },
@@ -410,8 +410,8 @@ Thank you for traveling with CamTransit!
       <Card className="bg-gradient-to-br from-blue-600 to-purple-600">
         <CardContent className="p-4 sm:p-6">
           <div className="text-white mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Book Your Next Trip</h2>
-            <p className="text-blue-100 text-sm">Search for available buses across Cameroon</p>
+            <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">{t('passenger.bookYourNextTrip')}</h2>
+            <p className="text-blue-100 text-sm">{t('landing.hero_desc')}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>

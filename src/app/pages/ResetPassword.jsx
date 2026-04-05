@@ -1,12 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router";
 import { useTranslation } from "../i18n/LanguageContext.jsx";
-import { Lock, Bus, CheckCircle, XCircle } from "lucide-react";
+import { Lock, Bus, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "../components/ui/button.jsx";
 import { Input } from "../components/ui/input.jsx";
 import { Label } from "../components/ui/label.jsx";
 import backgroundImage from "../../assets/ac0115c200b867df897b82be118608edd9b6ec3d.png";
 import { apiEndpoint } from "../utils/apiConfig.js";
+
+// Password strength validation
+const PASSWORD_RULES = {
+  minLength: { regex: /.{8,}/, message: "At least 8 characters" },
+  uppercase: { regex: /[A-Z]/, message: "One uppercase (A-Z)" },
+  lowercase: { regex: /[a-z]/, message: "One lowercase (a-z)" },
+  number: { regex: /[0-9]/, message: "One number (0-9)" },
+  special: { regex: /[!@#$%^&*(),.?\":{}|<>]/, message: "One special (!@#$%)" },
+};
+
+function checkPasswordStrength(password) {
+  const results = {};
+  let score = 0;
+  for (const [rule, config] of Object.entries(PASSWORD_RULES)) {
+    results[rule] = config.regex.test(password);
+    if (results[rule]) score++;
+  }
+  return { results, score };
+}
+
+function getStrengthLabel(score) {
+  if (score <= 1) return { label: "Very Weak", color: "bg-red-500", width: "10%" };
+  if (score === 2) return { label: "Weak", color: "bg-orange-500", width: "30%" };
+  if (score === 3) return { label: "Fair", color: "bg-yellow-500", width: "50%" };
+  if (score === 4) return { label: "Strong", color: "bg-blue-500", width: "75%" };
+  return { label: "Very Strong", color: "bg-green-500", width: "100%" };
+}
 
 export function ResetPassword() {
   const { t } = useTranslation();
@@ -20,6 +47,16 @@ export function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ results: {}, score: 0 });
+
+  useEffect(() => {
+    if (password) {
+      setPasswordStrength(checkPasswordStrength(password));
+    } else {
+      setPasswordStrength({ results: {}, score: 0 });
+    }
+  }, [password]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,17 +69,18 @@ export function ResetPassword() {
     }
 
     if (!password.trim()) {
-      setError(t("auth.passwordRequired"));
+      setError("Password is required");
       return;
     }
 
-    if (password.length < 6) {
-      setError(t("auth.passwordMinLength"));
+    const strength = checkPasswordStrength(password);
+    if (strength.score < 5) {
+      setError("Password must meet all requirements below");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError(t("auth.passwordMismatch") || "Passwords do not match");
+      setError("Passwords do not match");
       return;
     }
 
@@ -54,7 +92,7 @@ export function ResetPassword() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, new_password: password }),
       });
 
       const data = await response.json();
@@ -166,7 +204,7 @@ export function ResetPassword() {
             <img 
               src="/src/assets/CamTransit.png" 
               alt="CamTransit Logo" 
-              className="w-72 h-72 mx-auto -mb-20 object-contain"
+              className="w-48 sm:w-56 md:w-64 lg:w-72 h-auto mx-auto -mb-12 sm:-mb-16 md:-mb-20 object-contain"
             />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {t("resetPassword.title")}

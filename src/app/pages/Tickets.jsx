@@ -82,10 +82,10 @@ export function Tickets() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{t('nav.tickets')}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t('nav.tickets')}</h1>
         <p className="text-gray-600 mt-1">{t('passenger.ticketDetails')}</p>
       </div>
 
@@ -96,50 +96,50 @@ export function Tickets() {
             key={ticket.id}
             className="overflow-hidden hover:shadow-lg transition-shadow border-2"
           >
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
-              <div className="flex items-start justify-between mb-3">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 md:p-4 text-white">
+              <div className="flex items-start justify-between mb-2 md:mb-3">
                 <div>
-                  <Badge className="bg-white/20 text-white border-white/30 mb-2">
+                  <Badge className="bg-white/20 text-white border-white/30 mb-1 md:mb-2 text-xs">
                     {ticket.ticketClass}
                   </Badge>
-                  <h3 className="text-xl font-bold">{ticket.id}</h3>
+                  <h3 className="text-lg md:text-xl font-bold">{ticket.id}</h3>
                 </div>
                 <Badge variant="outline" className={getStatusColor(ticket.status)}>
                   {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 text-sm opacity-90">
-                <User className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-xs md:text-sm opacity-90">
+                <User className="w-3 h-3 md:w-4 md:h-4" />
                 <span>{ticket.passengerName}</span>
               </div>
             </div>
 
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 md:pt-6">
               {/* Route Information */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 md:mb-6">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                      <MapPin className="w-4 h-4 text-green-600" />
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-500 mb-1">
+                      <MapPin className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
                       <span>{t('common.from')}</span>
                     </div>
-                    <p className="font-semibold text-gray-900">{ticket.routeFrom}</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">
+                    <p className="font-semibold text-gray-900 text-sm md:text-base">{ticket.routeFrom}</p>
+                    <p className="text-xl md:text-2xl font-bold text-blue-600 mt-1">
                       {ticket.departureTime}
                     </p>
                   </div>
-                  <div className="px-4">
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center">
-                      <span className="text-gray-400">→</span>
+                  <div className="px-2 md:px-4">
+                    <div className="w-8 h-8 md:w-12 md:h-12 rounded-full border-2 border-dashed border-white/50 flex items-center justify-center">
+                      <span className="text-white/70 text-sm md:text-lg">→</span>
                     </div>
                   </div>
                   <div className="flex-1 text-right">
-                    <div className="flex items-center justify-end gap-2 text-sm text-gray-500 mb-1">
+                    <div className="flex items-center justify-end gap-1 md:gap-2 text-xs md:text-sm text-gray-500 mb-1">
                       <span>{t('common.to')}</span>
-                      <MapPin className="w-4 h-4 text-red-600" />
+                      <MapPin className="w-3 h-3 md:w-4 md:h-4 text-red-600" />
                     </div>
-                    <p className="font-semibold text-gray-900">{ticket.routeTo}</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">
+                    <p className="font-semibold text-gray-900 text-sm md:text-base">{ticket.routeTo}</p>
+                    <p className="text-xl md:text-2xl font-bold text-blue-600 mt-1">
                       {ticket.arrivalTime}
                     </p>
                   </div>
@@ -147,7 +147,7 @@ export function Tickets() {
               </div>
 
               {/* Ticket Details */}
-              <div className="grid grid-cols-3 gap-4 py-4 border-t border-b border-gray-200 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 py-3 md:py-4 border-t border-b border-gray-200 mb-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">{t('common.date')}</p>
                   <div className="flex items-center gap-1">
@@ -166,36 +166,36 @@ export function Tickets() {
               </div>
 
               {/* QR Code and Price */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <QrCode className="w-10 h-10 text-gray-600" />
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <QrCode className="w-8 h-8 md:w-10 md:h-10 text-gray-600" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">{t('tickets.scanToValidate')}</p>
                     <p className="text-sm font-medium text-gray-900">{t('tickets.mobileTicket')}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <p className="text-xs text-gray-500">{t('common.total')}</p>
-                  <p className="text-2xl font-bold text-gray-900">{ticket.price}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{ticket.price}</p>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 gap-2">
+                <Button variant="outline" className="flex-1 gap-2 text-sm">
                   <Download className="w-4 h-4" />
                   {t('common.download')}
                 </Button>
-                <Button variant="outline" className="flex-1 gap-2">
+                <Button variant="outline" className="flex-1 gap-2 text-sm">
                   <Printer className="w-4 h-4" />
                   {t('common.print')}
                 </Button>
               </div>
 
               {/* Booking Info */}
-              <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-100">
                 <p className="text-xs text-gray-500">
                   {t('tickets.bookedOn')} {ticket.bookingDate}
                 </p>
@@ -208,8 +208,8 @@ export function Tickets() {
       {/* Empty State for no tickets */}
       {tickets.length === 0 && (
         <Card>
-          <CardContent className="py-12 text-center">
-            <Ticket className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <CardContent className="py-10 md:py-12 text-center">
+            <Ticket className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('tickets.noTicketsFound')}</h3>
             <p className="text-gray-600 mb-4">{t('tickets.noTicketsDescription')}</p>
             <Button 

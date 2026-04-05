@@ -226,15 +226,15 @@ export function Passengers() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Passengers</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Passengers</h1>
           <p className="text-gray-600 mt-1">Manage passenger assignments to trips and drivers</p>
         </div>
         <Button onClick={openAssignDialog} className="gap-2">
           <UserPlus className="w-4 h-4" />
-          Assign Passenger
+          <span className="hidden sm:inline">Assign Passenger</span>
         </Button>
       </div>
 
@@ -255,13 +255,13 @@ export function Passengers() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Passengers</p>
-                <p className="text-2xl font-bold">{passengers.length}</p>
+                <p className="text-xl md:text-2xl font-bold">{passengers.length}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-600" />
+              <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>

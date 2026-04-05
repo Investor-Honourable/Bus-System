@@ -91,66 +91,66 @@ export function History() {
     .reduce((sum, t) => sum + parseFloat(t.price.replace("$", "")), 0);
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{t('nav.history')}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t('nav.history')}</h1>
         <p className="text-gray-600 mt-1">{t('passenger.bookingHistory')}</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('passenger.pastTrips')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{tripHistory.length}</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">{tripHistory.length}</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <Calendar className="w-6 h-6 text-blue-600" />
+              <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('common.completed')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{completedTrips}</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">{completedTrips}</p>
               </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <Star className="w-6 h-6 text-green-600" />
+              <div className="p-2 md:p-3 bg-green-50 rounded-lg">
+                <Star className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('bookings.totalSpent')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">${totalSpent.toFixed(2)}</p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">${totalSpent.toFixed(2)}</p>
               </div>
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <Calendar className="w-6 h-6 text-purple-600" />
+              <div className="p-2 md:p-3 bg-purple-50 rounded-lg">
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('routes.avgRating')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1 flex items-center gap-1">
+                <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1 flex items-center gap-1">
                   4.7
-                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                  <Star className="w-4 h-4 md:w-5 md:h-5 fill-yellow-400 text-yellow-400" />
                 </p>
               </div>
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <Star className="w-6 h-6 text-yellow-600" />
+              <div className="p-2 md:p-3 bg-yellow-50 rounded-lg">
+                <Star className="w-5 h-5 md:w-6 md:h-6 text-yellow-600" />
               </div>
             </div>
           </CardContent>
@@ -159,8 +159,8 @@ export function History() {
 
       {/* Search and Filters */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
@@ -170,21 +170,23 @@ export function History() {
                 className="pl-10"
               />
             </div>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('common.all')}</SelectItem>
-                <SelectItem value="completed">{t('common.completed')}</SelectItem>
-                <SelectItem value="cancelled">{t('common.cancelled')}</SelectItem>
-                <SelectItem value="refunded">{t('history.refunded')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="gap-2">
-              <Filter className="w-4 h-4" />
-              {t('common.filter')}
-            </Button>
+            <div className="flex gap-2">
+              <Select defaultValue="all">
+                <SelectTrigger className="w-full sm:w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('common.all')}</SelectItem>
+                  <SelectItem value="completed">{t('common.completed')}</SelectItem>
+                  <SelectItem value="cancelled">{t('common.cancelled')}</SelectItem>
+                  <SelectItem value="refunded">{t('history.refunded')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" className="gap-2">
+                <Filter className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('common.filter')}</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -193,14 +195,14 @@ export function History() {
       <div className="space-y-4">
         {filteredHistory.map((trip) => (
           <Card key={trip.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-4">
+            <CardContent className="pt-4 md:pt-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3 md:mb-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-2">
                     <Badge variant="outline" className="text-xs">
                       {trip.ticketId}
                     </Badge>
-                    <Badge variant="outline" className={getStatusColor(trip.status)}>
+                    <Badge variant="outline" className={`text-xs ${getStatusColor(trip.status)}`}>
                       {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
                     </Badge>
                     {trip.ticketClass === "Business" && (
@@ -209,19 +211,19 @@ export function History() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="w-4 h-4" />
+                  <div className="flex items-center gap-1 md:gap-2 text-sm text-gray-600">
+                    <Calendar className="w-3 h-3 md:w-4 md:h-4" />
                     <span>{trip.departureDate}</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{trip.price}</p>
+                <div className="text-left sm:text-right">
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{trip.price}</p>
                   {trip.rating && (
-                    <div className="flex items-center gap-1 mt-1 justify-end">
+                    <div className="flex items-center gap-1 mt-1 justify-start sm:justify-end">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-4 h-4 ${
+                          className={`w-3 h-3 md:w-4 md:h-4 ${
                             i < trip.rating
                               ? "fill-yellow-400 text-yellow-400"
                               : "text-gray-300"
@@ -233,27 +235,27 @@ export function History() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-4 py-4 border-t border-gray-100">
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-500 mb-2">{t('route.routeName')}</p>
-                  <div className="flex items-center gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 py-3 md:py-4 border-t border-gray-100">
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-gray-500 mb-1 md:mb-2">{t('route.routeName')}</p>
+                  <div className="flex items-center gap-1 md:gap-2">
                     <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4 text-green-600" />
+                      <MapPin className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
                       <span className="font-medium text-sm">{trip.routeFrom}</span>
                     </div>
                     <span className="text-gray-400">→</span>
                     <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4 text-red-600" />
+                      <MapPin className="w-3 h-3 md:w-4 md:h-4 text-red-600" />
                       <span className="font-medium text-sm">{trip.routeTo}</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">{t('bus.busNumber')}</p>
+                  <p className="text-xs text-gray-500 mb-1 md:mb-2">{t('bus.busNumber')}</p>
                   <p className="text-sm font-medium">{trip.busNumber}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">{t('common.time')}</p>
+                  <p className="text-xs text-gray-500 mb-1 md:mb-2">{t('common.time')}</p>
                   <div className="flex items-center gap-1 text-sm">
                     <Clock className="w-3 h-3 text-gray-400" />
                     <span className="font-medium">
@@ -262,13 +264,13 @@ export function History() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">{t('booking.seatSelection')}</p>
+                  <p className="text-xs text-gray-500 mb-1 md:mb-2">{t('booking.seatSelection')}</p>
                   <p className="text-sm font-medium">{trip.seatNumber}</p>
                 </div>
               </div>
 
               {trip.status === "completed" && !trip.rating && (
-                <div className="pt-4 border-t border-gray-100">
+                <div className="pt-3 md:pt-4 border-t border-gray-100">
                   <Button variant="outline" size="sm">
                     {t('history.rateThisTrip')}
                   </Button>
@@ -281,8 +283,8 @@ export function History() {
 
       {filteredHistory.length === 0 && (
         <Card>
-          <CardContent className="py-12 text-center">
-            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <CardContent className="py-10 md:py-12 text-center">
+            <Calendar className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('history.noHistoryFound')}</h3>
             <p className="text-gray-600">{t('messages.noResults')}</p>
           </CardContent>

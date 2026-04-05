@@ -170,9 +170,9 @@ export function Login() {
             <img 
               src="/src/assets/CamTransit.png" 
               alt="CamTransit Logo" 
-              className="w-72 h-72 mx-auto -mb-20 object-contain"
+              className="w-48 sm:w-56 md:w-64 lg:w-72 h-auto mx-auto -mb-12 sm:-mb-16 md:-mb-20 object-contain"
             />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {t('auth.loginTitle')}
             </h1>
             <p className="text-gray-600 mt-2">{t('auth.loginSubtitle')}</p>

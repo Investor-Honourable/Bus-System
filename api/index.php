@@ -102,6 +102,190 @@ if ($action === 'login' || $action === 'register') {
     exit;
 }
 
+// ============= USER PROFILE SETTINGS =============
+// GET - Get user profile, stats, settings
+if ($action === 'get') {
+    $user_id = $data['user_id'] ?? 0;
+    
+    if (!$user_id) {
+        echo json_encode(['status' => 'error', 'message' => 'User ID required']);
+        exit;
+    }
+    
+    // Check connection
+    if (!$conn) {
+        echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
+        exit;
+    }
+    
+    // Get user data
+    $stmt = $conn->prepare("SELECT id, name, username, email, phone, gender, role, created_at, profile_picture FROM users WHERE id = ?");
+    if (!$stmt) {
+        echo json_encode(['status' => 'error', 'message' => 'Prepare failed: ' . $conn->error]);
+        exit;
+    }
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    
+    if (!$user) {
+        echo json_encode(['status' => 'error', 'message' => 'User not found']);
+        exit;
+    }
+    
+    // Get stats
+    $stats = ['active_tickets' => 0, 'total_bookings' => 0, 'total_spent' => 0, 'completed_bookings' => 0];
+    
+    // Get active tickets count
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND status = 'valid'");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stats['active_tickets'] = $row['count'] ?? 0;
+    }
+    
+    // Get total bookings
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM bookings WHERE user_id = ?");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stats['total_bookings'] = $row['count'] ?? 0;
+    }
+    
+    // Get completed bookings
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM bookings WHERE user_id = ? AND booking_status = 'completed'");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stats['completed_bookings'] = $row['count'] ?? 0;
+    }
+    
+    // Get total spent
+    $stmt = $conn->prepare("SELECT COALESCE(SUM(total_price), 0) as total FROM bookings WHERE user_id = ? AND booking_status != 'cancelled'");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stats['total_spent'] = $row['total'] ?? 0;
+    }
+    
+    echo json_encode([
+        'status' => 'success', 
+        'data' => [
+            'user' => $user,
+            'stats' => $stats,
+            'settings' => [
+                'email_notifications' => 1,
+                'sms_notifications' => 1,
+                'booking_confirmations' => 1,
+                'trip_reminders' => 1,
+                'promotions' => 0,
+                'two_factor_enabled' => 0,
+                'language' => 'en'
+            ],
+            'payment_methods' => [],
+            'login_activity' => []
+        ]
+    ]);
+    exit;
+}
+
+// UPDATE_PROFILE - Update user profile
+if ($action === 'update_profile') {
+    $user_id = $data['user_id'] ?? 0;
+    $name = $data['name'] ?? '';
+    $email = $data['email'] ?? '';
+    $phone = $data['phone'] ?? '';
+    
+    if (!$user_id || !$name || !$email) {
+        echo json_encode(['status' => 'error', 'message' => 'Name and email are required']);
+        exit;
+    }
+    
+    $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?");
+    $stmt->bind_param("sssi", $name, $email, $phone, $user_id);
+    
+    if ($stmt->execute()) {
+        createNotification($conn, $user_id, 'Profile Updated', 'Your profile information has been updated.', 'profile');
+        echo json_encode(['status' => 'success', 'message' => 'Profile updated successfully']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to update profile']);
+    }
+    exit;
+}
+
+// UPDATE_PROFILE_PICTURE - Update user profile picture
+if ($action === 'update_profile_picture') {
+    $user_id = $data['user_id'] ?? 0;
+    $profile_picture = $data['profile_picture'] ?? '';
+    
+    error_log("Updating profile picture for user_id: $user_id, picture length: " . strlen($profile_picture));
+    
+    if (!$user_id || empty($profile_picture)) {
+        echo json_encode(['status' => 'error', 'message' => 'Profile picture is required']);
+        exit;
+    }
+    
+    $stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        echo json_encode(['status' => 'error', 'message' => 'Prepare failed: ' . $conn->error]);
+        exit;
+    }
+    $stmt->bind_param("si", $profile_picture, $user_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success', 'message' => 'Profile picture updated successfully']);
+    } else {
+        error_log("Execute failed: " . $stmt->error);
+        echo json_encode(['status' => 'error', 'message' => 'Failed to update profile picture: ' . $stmt->error]);
+    }
+    exit;
+}
+
+// CHANGE_PASSWORD - Change user password
+if ($action === 'change_password') {
+    $user_id = $data['user_id'] ?? 0;
+    $current_password = $data['current_password'] ?? '';
+    $new_password = $data['new_password'] ?? '';
+    
+    if (!$user_id || !$current_password || !$new_password) {
+        echo json_encode(['status' => 'error', 'message' => 'Current password and new password are required']);
+        exit;
+    }
+    
+    // Get current password hash
+    $stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    
+    if (!password_verify($current_password, $user['password'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Current password is incorrect']);
+        exit;
+    }
+    
+    $new_hash = password_hash($new_password, PASSWORD_DEFAULT);
+    $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $stmt->bind_param("si", $new_hash, $user_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success', 'message' => 'Password changed successfully']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to change password']);
+    }
+    exit;
+}
+
 // ============= GET ROUTES =============
 if ($action === 'get_routes' || ($method === 'GET' && strpos($_SERVER['REQUEST_URI'], 'routes') !== false)) {
     $result = $conn->query("SELECT * FROM routes WHERE status = 'active' ORDER BY origin, destination");
@@ -236,6 +420,37 @@ if ($action === 'create_booking') {
             error_log("Booking failed: Not enough seats - requested: $number_of_seats, available: {$trip['available_seats']}");
             echo json_encode(['status' => 'error', 'message' => 'Not enough seats available', 'available_seats' => $trip['available_seats']]);
             exit;
+        }
+        
+        // Check if specific seats are already booked
+        $requested_seats = $data['seat_numbers'] ?? [];
+        if (!empty($requested_seats)) {
+            $stmt = $conn->prepare("SELECT seat_numbers FROM bookings WHERE trip_id = ? AND booking_status IN ('confirmed', 'pending')");
+            $stmt->bind_param("i", $trip_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            $already_booked = [];
+            while ($row = $result->fetch_assoc()) {
+                $seat_data = $row['seat_numbers'];
+                if (strpos($seat_data, '[') === 0) {
+                    $existing = json_decode($seat_data, true) ?? [];
+                } else {
+                    $existing = array_map('trim', explode(',', $seat_data));
+                }
+                foreach ($existing as $existing_seat) {
+                    if ($existing_seat !== '') {
+                        $already_booked[] = (int)$existing_seat;
+                    }
+                }
+            }
+            
+            $conflict_seats = array_intersect($requested_seats, $already_booked);
+            if (!empty($conflict_seats)) {
+                error_log("Booking failed: Seats already booked - " . json_encode($conflict_seats));
+                echo json_encode(['status' => 'error', 'message' => 'Some seats are already booked: ' . implode(', ', $conflict_seats), 'conflict_seats' => array_values($conflict_seats)]);
+                exit;
+            }
         }
         
         $booking_reference = generateBookingReference();
@@ -385,13 +600,15 @@ if ($action === 'get_user_tickets') {
         exit;
     }
     
-    $stmt = $conn->prepare("SELECT tk.*, b.booking_reference, t.departure_date, t.departure_time, t.arrival_time, r.origin, r.destination, r.route_code, bus.bus_number, bus.bus_name FROM tickets tk JOIN bookings b ON tk.booking_id = b.id JOIN trips t ON tk.trip_id = t.id JOIN routes r ON t.route_id = r.id JOIN buses bus ON t.bus_id = bus.id WHERE tk.user_id = ? ORDER BY tk.created_at DESC");
+    $stmt = $conn->prepare("SELECT tk.*, b.booking_reference, b.total_price, t.departure_date, t.departure_time, t.arrival_time, t.price as trip_price, r.origin, r.destination, r.route_code, bus.bus_number, bus.bus_name, bus.bus_type FROM tickets tk JOIN bookings b ON tk.booking_id = b.id JOIN trips t ON tk.trip_id = t.id JOIN routes r ON t.route_id = r.id JOIN buses bus ON t.bus_id = bus.id WHERE tk.user_id = ? ORDER BY tk.created_at DESC");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
     $tickets = [];
     while ($row = $result->fetch_assoc()) {
+        // Use total_price from bookings, or fallback to trip price
+        $row['total_price'] = $row['total_price'] ?? $row['trip_price'] ?? 0;
         $tickets[] = $row;
     }
     echo json_encode(['status' => 'success', 'tickets' => $tickets]);
@@ -792,7 +1009,9 @@ if ($action === 'get_booked_seats') {
         exit;
     }
     
-    $stmt = $conn->prepare("SELECT seat_numbers FROM bookings WHERE trip_id = ? AND booking_status IN ('confirmed', 'pending')");
+    error_log("get_booked_seats called for trip_id: " . $trip_id);
+    
+    $stmt = $conn->prepare("SELECT seat_numbers, booking_status FROM bookings WHERE trip_id = ? AND booking_status IN ('confirmed', 'pending')");
     $stmt->bind_param("i", $trip_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -800,6 +1019,7 @@ if ($action === 'get_booked_seats') {
     $booked_seats = [];
     while ($row = $result->fetch_assoc()) {
         $seat_numbers = $row['seat_numbers'];
+        error_log("Found booking with seat_numbers: " . $seat_numbers . " status: " . $row['booking_status']);
         // Handle both JSON array and comma-separated string formats
         if (strpos($seat_numbers, '[') === 0) {
             // JSON array format

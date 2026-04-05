@@ -40,7 +40,7 @@ import {
 import { useTranslation } from "../../i18n/LanguageContext.jsx";
 
 // API configuration
-import { apiEndpoint } from "../../utils/apiConfig.js";
+
 
 // Get user from localStorage
 const getStoredUser = () => {
@@ -96,6 +96,10 @@ export function Settings() {
     phone: ""
   });
   
+  // Profile picture state
+  const [profilePicture, setProfilePicture] = useState("");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     current_password: "",
@@ -118,17 +122,19 @@ export function Settings() {
   const fetchUserData = async () => {
     try {
       const user = getStoredUser();
+      console.log("Fetching user data for:", user);
       if (!user || !user.id) {
         navigate("/login");
         return;
       }
       
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get", user_id: user.id })
       });
       const data = await response.json();
+      console.log("API response:", data);
       
       if (data.status === "success") {
         setUserData(data.data.user);
@@ -143,6 +149,9 @@ export function Settings() {
           email: data.data.user.email,
           phone: data.data.user.phone || ""
         });
+        // Set profile picture from user data or localStorage
+        const storedUser = getStoredUser();
+        setProfilePicture(data.data.user.profile_picture || storedUser?.profile_picture || "");
         setSettings({
           email_notifications: data.data.settings.email_notifications,
           sms_notifications: data.data.settings.sms_notifications,
@@ -159,7 +168,7 @@ export function Settings() {
       }
     } catch (err) {
       console.error("Failed to fetch user data:", err);
-      setError("Failed to load user data");
+      setError("Failed to load user data: " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -182,7 +191,7 @@ export function Settings() {
     setError("");
     
     try {
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -215,6 +224,106 @@ export function Settings() {
     }
   };
 
+  // Compress image using canvas
+  const compressImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with quality
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = event.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Photo upload handler
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file type - accept common image types
+    if (!file.type.startsWith('image/')) {
+      showMessage("Please upload a valid image file", true);
+      return;
+    }
+    
+    // Validate file size (max 10MB before compression)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      showMessage("Image is too large. Must be less than 10MB", true);
+      return;
+    }
+    
+setIsUploadingPhoto(true);
+    
+    try {
+      // Compress image before uploading (resize to 300x300, quality 0.7)
+      const compressedImage = await compressImage(file, 300, 300, 0.7);
+      console.log("Compressed photo, size:", compressedImage.length);
+      
+      // Save to API
+      const response = await fetch("/api/index.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_profile_picture",
+          user_id: getStoredUser()?.id,
+          profile_picture: compressedImage
+        })
+      });
+      
+      const data = await response.json();
+      console.log("Upload response:", data);
+      
+      if (data.status === "success") {
+        setProfilePicture(compressedImage);
+        // Update localStorage
+        const storedUser = getStoredUser();
+        if (storedUser) {
+          const updatedUser = { ...storedUser, profile_picture: compressedImage };
+          localStorage.setItem("busfare_current_user", JSON.stringify(updatedUser));
+          window.dispatchEvent(new CustomEvent('user-profile-updated'));
+        }
+        showMessage("Profile picture updated!");
+      } else {
+        showMessage(data.message || "Failed to upload picture", true);
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      showMessage("Failed to upload picture: " + err.message, true);
+    }
+setIsUploadingPhoto(false);
+  };
+
   // Password change handler
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -232,7 +341,7 @@ export function Settings() {
     setIsSaving(true);
     
     try {
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -264,7 +373,7 @@ export function Settings() {
     setSettings(newSettings);
     
     try {
-      await fetch(apiEndpoint('/settings.php'), {
+      await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -284,7 +393,7 @@ export function Settings() {
     setSettings(prev => ({ ...prev, two_factor_enabled: newValue }));
     
     try {
-      await fetch(apiEndpoint('/settings.php'), {
+      await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -302,7 +411,7 @@ export function Settings() {
     if (!window.confirm("Are you sure you want to logout from all devices?")) return;
     
     try {
-      await fetch(apiEndpoint('/settings.php'), {
+      await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -328,7 +437,7 @@ export function Settings() {
     setIsSaving(true);
     
     try {
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -358,7 +467,7 @@ export function Settings() {
     if (!window.confirm("Are you sure you want to remove this payment method?")) return;
     
     try {
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -382,7 +491,7 @@ export function Settings() {
 
   const handleSetDefault = async (id) => {
     try {
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -411,7 +520,7 @@ export function Settings() {
     if (!window.confirm("This is your final warning. Your account will be deleted forever. Continue?")) return;
     
     try {
-      const response = await fetch(apiEndpoint('/settings.php'), {
+      const response = await fetch("/api/index.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete_account", user_id: getStoredUser()?.id })
@@ -505,20 +614,46 @@ export function Settings() {
             {/* My Info Tab */}
             {activeTab === "info" && (
               <div className="bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">My Information</h2>
-                <p className="text-gray-600 mb-8">View all your account information in one place</p>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Profile Settings</h2>
+                <p className="text-gray-600 mb-8">Manage your profile information and picture</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Profile Picture Display */}
                   <div className="col-span-full flex justify-center mb-6">
                     <div className="relative">
-                      <div className="w-40 h-40 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-5xl font-bold shadow-xl">
-                        {userData.name ? userData.name.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                      </div>
+                      {profilePicture ? (
+                        <img 
+                          src={profilePicture} 
+                          alt="Profile" 
+                          className="w-40 h-40 rounded-full object-cover shadow-xl border-4 border-white"
+                        />
+                      ) : (
+                        <div className="w-40 h-40 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-5xl font-bold shadow-xl">
+                          {userData.name ? userData.name.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                        </div>
+                      )}
                       {userData.id && (
-                        <div className="absolute bottom-2 right-2 bg-green-500 w-8 h-8 rounded-full border-4 border-white"></div>
+                        <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 w-12 h-12 rounded-full border-4 border-white flex items-center justify-center cursor-pointer shadow-lg transition-colors">
+                          <Camera className="w-5 h-5 text-white" />
+                          <input 
+                            type="file" 
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            disabled={isUploadingPhoto}
+                          />
+                        </label>
+                      )}
+                      {isUploadingPhoto && (
+                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        </div>
                       )}
                     </div>
+                  </div>
+                  
+                  <div className="col-span-full text-center text-gray-500 text-sm">
+                    JPG, PNG or GIF. Any image. Auto-compressed to 300x300..
                   </div>
 
                   {/* User ID */}
@@ -678,7 +813,7 @@ export function Settings() {
                     </div>
                     <div>
                       <p className="font-medium text-gray-800">Profile Picture</p>
-                      <p className="text-sm text-gray-500">JPG, PNG or GIF. Max 2MB.</p>
+                      <p className="text-sm text-gray-500">JPG, PNG or GIF. Any image. Auto-compressed to 300x300..</p>
                     </div>
                   </div>
 

@@ -185,20 +185,20 @@ export function Routes() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Routes</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Routes</h1>
           <p className="text-gray-600 mt-1">Manage bus routes and destinations</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchRoutes()} disabled={isRefreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`w-4 h-4 mr-1 md:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
-            Add Route
+            <span className="hidden sm:inline">Add Route</span>
           </Button>
         </div>
       </div>
@@ -206,22 +206,22 @@ export function Routes() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Routes</p>
-                <p className="text-2xl font-bold">{routes.length}</p>
+                <p className="text-xl md:text-2xl font-bold">{routes.length}</p>
               </div>
-              <RouteIcon className="w-8 h-8 text-blue-600" />
+              <RouteIcon className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Destinations</p>
-                <p className="text-2xl font-bold">{new Set(routes.flatMap(r => [r.start_point, r.end_point])).size}</p>
+                <p className="text-xl md:text-2xl font-bold">{new Set(routes.flatMap(r => [r.start_point, r.end_point])).size}</p>
               </div>
               <MapPin className="w-8 h-8 text-green-600" />
             </div>

@@ -195,20 +195,20 @@ export function Buses() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Buses</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Buses</h1>
           <p className="text-gray-600 mt-1">Manage your fleet of buses</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchBuses()} disabled={isRefreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`w-4 h-4 mr-1 md:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
-            Add Bus
+            <span className="hidden sm:inline">Add Bus</span>
           </Button>
         </div>
       </div>
@@ -216,22 +216,22 @@ export function Buses() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Buses</p>
-                <p className="text-2xl font-bold">{buses.length}</p>
+                <p className="text-xl md:text-2xl font-bold">{buses.length}</p>
               </div>
-              <BusIcon className="w-8 h-8 text-blue-600" />
+              <BusIcon className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Seats</p>
-                <p className="text-2xl font-bold">{buses.reduce((sum, bus) => sum + (parseInt(bus.capacity) || 0), 0)}</p>
+                <p className="text-xl md:text-2xl font-bold">{buses.reduce((sum, bus) => sum + (parseInt(bus.capacity) || 0), 0)}</p>
               </div>
               <BusFront className="w-8 h-8 text-green-600" />
             </div>

@@ -45,6 +45,7 @@ export function Layout() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profilePicture, setProfilePicture] = useState("");
   const isMobile = useIsMobile();
 
   // Notifications
@@ -109,11 +110,19 @@ export function Layout() {
 
   useEffect(() => {
     const userStr = localStorage.getItem("busfare_current_user");
-    if (userStr) setCurrentUser(JSON.parse(userStr));
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setCurrentUser(user);
+      setProfilePicture(user.profile_picture || "");
+    }
 
     const handleProfileUpdate = () => {
       const userStr = localStorage.getItem("busfare_current_user");
-      if (userStr) setCurrentUser(JSON.parse(userStr));
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        setProfilePicture(user.profile_picture || "");
+      }
     };
 
     const handleNotificationRefresh = () => fetchNotifications();
@@ -155,10 +164,10 @@ export function Layout() {
 
   const SidebarContent = ({ onItemClick }) => (
     <div className="flex flex-col h-full">
-      <div className="p-4 sm:p-6">
+      <div className="p-4 sm:p-6 flex-1">
         <div className="flex items-center gap-2 mb-6 sm:mb-8">
-          <img src="/src/assets/CamTransit.png" alt="CamTransit Logo" className="w-8 h-8 object-contain" />
-          <span className="text-xl font-bold text-gray-900">{t("common.appName")}</span>
+          <img src="/src/assets/CamTransit.png" alt="CamTransit Logo" className="w-16 h-16 object-contain" />
+          <span className="hidden sm:block text-xl font-bold text-gray-900">{t("common.appName")}</span>
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => (
@@ -179,6 +188,41 @@ export function Layout() {
           ))}
         </nav>
       </div>
+      <div className="p-4 sm:p-6 border-t border-gray-200">
+        <nav className="space-y-1">
+          <NavLink
+            to="/dashboard/settings"
+            onClick={onItemClick}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 sm:py-3 rounded-lg transition-colors ${
+                isActive ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"
+              }`
+            }
+          >
+            <Settings className="w-5 h-5" />
+            <span className="font-medium">{t("settings.accountSettings")}</span>
+          </NavLink>
+          <NavLink
+            to="/help-support"
+            onClick={onItemClick}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 sm:py-3 rounded-lg transition-colors ${
+                isActive ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"
+              }`
+            }
+          >
+            <HelpCircle className="w-5 h-5" />
+            <span className="font-medium">{t("nav.helpSupport")}</span>
+          </NavLink>
+          <button
+            onClick={() => { onItemClick(); handleLogout(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 sm:py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">{t("common.logout")}</span>
+          </button>
+        </nav>
+      </div>
     </div>
   );
 
@@ -192,11 +236,8 @@ export function Layout() {
       {/* Mobile Sidebar Sheet */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="w-72 p-0">
-          <SheetHeader className="border-b p-4">
-            <SheetTitle className="flex items-center gap-2">
-              <img src="/src/assets/CamTransit.png" alt="CamTransit Logo" className="w-8 h-8 object-contain" />
-              <span className="text-xl font-bold">{t("common.appName")}</span>
-            </SheetTitle>
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t("common.appName")}</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100%-60px)]">
             <SidebarContent onItemClick={() => setSidebarOpen(false)} />
@@ -278,9 +319,17 @@ export function Layout() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:bg-gray-50 rounded-lg px-2 py-1">
-                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                    {currentUser?.name?.charAt(0).toUpperCase() || "U"}
-                  </div>
+                  {profilePicture ? (
+                    <img 
+                      src={profilePicture} 
+                      alt="Profile" 
+                      className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      {currentUser?.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                  )}
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
               </DropdownMenuTrigger>

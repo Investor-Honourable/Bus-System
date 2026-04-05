@@ -3,8 +3,10 @@ import { MapPin, Clock, Users, Bus, Play, CheckCircle, XCircle, RefreshCw, Eye }
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { useNavigate } from "react-router";
+import { useTranslation } from "../../i18n/LanguageContext.jsx";
 
 export default function DriverTrips() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,8 +113,8 @@ export default function DriverTrips() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Trips</h1>
-          <p className="text-gray-600 mt-1">View and manage your assigned trips</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('driver.myTrips')}</h1>
+          <p className="text-gray-600 mt-1">{t('driver.tripDetails')}</p>
         </div>
         <Button onClick={fetchTrips} className="w-full sm:w-auto">
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />

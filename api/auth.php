@@ -83,6 +83,15 @@ if ($action === 'login') {
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_role'] = $user['role'];
 
+        // Create login notification
+        $notifTitle = 'Login Detected';
+        $notifMsg = 'You logged in at ' . date('Y-m-d H:i:s');
+        $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)");
+        $notifType = 'login';
+        $stmtNotif->bind_param("isss", $user['id'], $notifTitle, $notifMsg, $notifType);
+        $stmtNotif->execute();
+        $stmtNotif->close();
+        
         echo json_encode([
             'status' => 'success',
             'message' => 'Login successful',
@@ -116,6 +125,32 @@ if ($action === 'register') {
         echo json_encode([
             'status' => 'error',
             'message' => 'Name, email, and password are required'
+        ]);
+        exit;
+    }
+
+    // Strong password validation (server-side)
+    $passwordErrors = [];
+    if (strlen($password) < 8) {
+        $passwordErrors[] = "Password must be at least 8 characters";
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        $passwordErrors[] = "Password must contain at least one uppercase letter";
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        $passwordErrors[] = "Password must contain at least one lowercase letter";
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        $passwordErrors[] = "Password must contain at least one number";
+    }
+    if (!preg_match('/[!@#$%^&*(),.?\":{}|<>]/', $password)) {
+        $passwordErrors[] = "Password must contain at least one special character";
+    }
+
+    if (!empty($passwordErrors)) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => implode(". ", $passwordErrors)
         ]);
         exit;
     }
@@ -169,7 +204,21 @@ if ($action === 'register') {
         $_SESSION['user_name'] = $name;
         $_SESSION['user_email'] = $email;
         $_SESSION['user_role'] = 'passenger';
-
+        
+        // Create welcome notifications for new user
+        $notifications = [
+            ['title' => 'Welcome to CamTransit!', 'message' => 'Thank you for joining CamTransit! Start planning your journeys today.', 'type' => 'system'],
+            ['title' => 'Complete Your Profile', 'message' => 'Add your phone number and profile picture to get started.', 'type' => 'profile'],
+            ['title' => 'Book Your First Trip', 'message' => 'Ready to travel? Browse routes and book your first bus trip now!', 'type' => 'booking']
+        ];
+        
+        foreach ($notifications as $notif) {
+            $stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("isss", $user_id, $notif['title'], $notif['message'], $notif['type']);
+            $stmt->execute();
+            $stmt->close();
+        }
+        
         // Return JSON including user info
         echo json_encode([
             'status' => 'success',
@@ -187,8 +236,8 @@ if ($action === 'register') {
             'message' => 'Registration failed: ' . $stmt->error
         ]);
     }
-
-    $stmt->close();
+    
+    if (isset($stmt)) $stmt->close();
     exit;
 }
 

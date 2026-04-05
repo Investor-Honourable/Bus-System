@@ -62,7 +62,7 @@ if ($method === 'POST') {
     if ($action === 'get') {
         try {
             // Get user data
-            $stmt = $conn->prepare("SELECT id, name, username, email, phone, gender, role, created_at FROM users WHERE id = ?");
+            $stmt = $conn->prepare("SELECT id, name, username, email, phone, gender, role, created_at, profile_picture FROM users WHERE id = ?");
             $stmt->bind_param("i", $user_id);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -193,6 +193,30 @@ if ($method === 'POST') {
                 echo json_encode(['status' => 'success', 'message' => 'Profile updated successfully']);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Failed to update profile']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    // UPDATE_PROFILE_PICTURE - Update user profile picture
+    if ($action === 'update_profile_picture') {
+        $profile_picture = $data['profile_picture'] ?? '';
+        
+        if (empty($profile_picture)) {
+            echo json_encode(['status' => 'error', 'message' => 'Profile picture is required']);
+            exit;
+        }
+        
+        try {
+            $stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
+            $stmt->bind_param("si", $profile_picture, $user_id);
+            
+            if ($stmt->execute()) {
+                echo json_encode(['status' => 'success', 'message' => 'Profile picture updated successfully']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update profile picture']);
             }
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);

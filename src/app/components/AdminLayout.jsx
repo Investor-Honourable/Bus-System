@@ -178,7 +178,7 @@ export function AdminLayout() {
             <img 
               src="/src/assets/CamTransit.png" 
               alt="CamTransit Logo" 
-              className="w-8 h-8 object-contain flex-shrink-0"
+              className="w-16 h-16 object-contain flex-shrink-0"
             />
             {isSidebarOpen && (
               <span className="text-lg font-bold whitespace-nowrap">{t('common.appName')} Admin</span>
@@ -230,13 +230,8 @@ export function AdminLayout() {
       <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
         <SheetContent side="left" className="w-72 p-0 bg-slate-900">
           <SheetHeader className="border-b border-slate-700 p-4">
-            <SheetTitle className="flex items-center gap-3 text-white">
-              <img 
-                src="/src/assets/CamTransit.png" 
-                alt="CamTransit Logo" 
-                className="w-8 h-8 object-contain"
-              />
-              <span className="text-lg font-bold">{t('common.appName')} Admin</span>
+            <SheetTitle className="text-lg font-bold text-white">
+              {t('common.appName')} Admin
             </SheetTitle>
           </SheetHeader>
           <nav className="flex-1 py-4 overflow-y-auto">
@@ -274,9 +269,17 @@ export function AdminLayout() {
                 variant="ghost" 
                 size="icon"
                 onClick={handleSidebarToggle}
-                className="touch-manipulation min-h-[44px] min-w-[44px]"
+                className="touch-manipulation min-h-[44px] min-w-[44px] md:hidden flex"
               >
-                {isMobile || isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                <Menu className="w-5 h-5" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleSidebarToggle}
+                className="touch-manipulation min-h-[44px] min-w-[44px] hidden md:flex"
+              >
+                {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
               <span className="text-lg font-semibold text-gray-900 md:hidden">{t('common.appName')}</span>
             </div>

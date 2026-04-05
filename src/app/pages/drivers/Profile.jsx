@@ -126,8 +126,8 @@ export default function DriverProfile() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Driver Profile</h1>
-        <p className="text-gray-600 mt-1">View and manage your personal information</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('driver.driverProfile')}</h1>
+        <p className="text-gray-600 mt-1">{t('settings.profile')}</p>
       </div>
 
       {/* Profile Header */}

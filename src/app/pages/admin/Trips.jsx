@@ -462,20 +462,20 @@ export function Trips() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Trips</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Trips</h1>
           <p className="text-gray-600 mt-1">Manage trip schedules and view passengers</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchData()} disabled={isRefreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
-            Create Trip
+            <span className="hidden sm:inline">Create Trip</span>
           </Button>
         </div>
       </div>
@@ -483,46 +483,46 @@ export function Trips() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Trips</p>
-                <p className="text-2xl font-bold">{filteredTrips.length}</p>
+                <p className="text-xl md:text-2xl font-bold">{filteredTrips.length}</p>
               </div>
-              <Calendar className="w-8 h-8 text-blue-600" />
+              <Calendar className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Scheduled</p>
-                <p className="text-2xl font-bold">{filteredTrips.filter(t => t.status === "scheduled").length}</p>
+                <p className="text-xl md:text-2xl font-bold">{filteredTrips.filter(t => t.status === "scheduled").length}</p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
+              <Clock className="w-6 h-6 md:w-8 md:h-8 text-yellow-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold">{filteredTrips.filter(t => t.status === "completed").length}</p>
+                <p className="text-xl md:text-2xl font-bold">{filteredTrips.filter(t => t.status === "completed").length}</p>
               </div>
-              <MapPin className="w-8 h-8 text-green-600" />
+              <MapPin className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Cancelled</p>
-                <p className="text-2xl font-bold">{filteredTrips.filter(t => t.status === "cancelled").length}</p>
+                <p className="text-xl md:text-2xl font-bold">{filteredTrips.filter(t => t.status === "cancelled").length}</p>
               </div>
-              <XCircle className="w-8 h-8 text-red-600" />
+              <XCircle className="w-5 h-5 md:w-6 md:h-6 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -531,18 +531,18 @@ export function Trips() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>All Trips</CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search trips..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64"
+                className="pl-10 w-full sm:w-48 md:w-64"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-28">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -554,12 +554,12 @@ export function Trips() {
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={exportToCSV}>
-              <Download className="w-4 h-4 mr-2" />
-              CSV
+              <Download className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden md:inline">CSV</span>
             </Button>
             <Button variant="outline" size="sm" onClick={exportToJSON}>
-              <Download className="w-4 h-4 mr-2" />
-              JSON
+              <Download className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden md:inline">JSON</span>
             </Button>
           </div>
         </CardHeader>

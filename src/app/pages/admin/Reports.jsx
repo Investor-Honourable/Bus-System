@@ -229,16 +229,16 @@ export function Reports() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reports</h1>
           <p className="text-gray-600 mt-1">System insights and analytics</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => fetchStats()} disabled={isRefreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`w-4 h-4 mr-1 md:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Tabs value={period} onValueChange={setPeriod}>
             <TabsList>
@@ -248,12 +248,12 @@ export function Reports() {
             </TabsList>
           </Tabs>
           <Button variant="outline" size="sm" onClick={exportToCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            CSV
+            <Download className="w-4 h-4 mr-1 md:mr-2" />
+            <span className="hidden md:inline">CSV</span>
           </Button>
           <Button variant="outline" size="sm" onClick={exportToJSON}>
-            <Download className="w-4 h-4 mr-2" />
-            JSON
+            <Download className="w-4 h-4 mr-1 md:mr-2" />
+            <span className="hidden md:inline">JSON</span>
           </Button>
         </div>
       </div>

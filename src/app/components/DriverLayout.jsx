@@ -135,9 +135,9 @@ export function DriverLayout() {
           <img 
             src="/src/assets/CamTransit.png" 
             alt="CamTransit Logo" 
-            className="w-8 h-8 object-contain"
+            className="w-16 h-16 object-contain"
           />
-          <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
+          <span className="hidden sm:block text-xl font-bold text-gray-900">{t('common.appName')}</span>
         </div>
         
         <nav className="space-y-1">

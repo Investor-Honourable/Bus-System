@@ -91,73 +91,73 @@ export function Bookings() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('nav.bookings')}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t('nav.bookings')}</h1>
           <p className="text-gray-600 mt-1">{t('bookings.manageDescription')}</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('bookings.totalBookings')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">
                   {bookings.length}
                 </p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <Calendar className="w-6 h-6 text-blue-600" />
+              <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('bookings.upcoming')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">
                   {bookings.filter((b) => b.status === "confirmed" || b.status === "pending").length}
                 </p>
               </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <Users className="w-6 h-6 text-green-600" />
+              <div className="p-2 md:p-3 bg-green-50 rounded-lg">
+                <Users className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('bookings.completed')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">
                   {bookings.filter((b) => b.status === "completed").length}
                 </p>
               </div>
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <Calendar className="w-6 h-6 text-purple-600" />
+              <div className="p-2 md:p-3 bg-purple-50 rounded-lg">
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('bookings.totalSpent')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">
                   {bookings.reduce((sum, b) => sum + (parseFloat(b.price.replace(/,/g, '')) || 0), 0).toLocaleString()} XAF
                 </p>
               </div>
-              <div className="p-3 bg-amber-50 rounded-lg">
-                <DollarSign className="w-6 h-6 text-amber-600" />
+              <div className="p-2 md:p-3 bg-amber-50 rounded-lg">
+                <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-amber-600" />
               </div>
             </div>
           </CardContent>
@@ -166,8 +166,8 @@ export function Bookings() {
 
       {/* Search and Filters */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
@@ -177,59 +177,61 @@ export function Bookings() {
                 className="pl-10"
               />
             </div>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('common.all')}</SelectItem>
-                <SelectItem value="confirmed">{t('booking.confirmed')}</SelectItem>
-                <SelectItem value="pending">{t('common.pending')}</SelectItem>
-                <SelectItem value="cancelled">{t('common.cancelled')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="gap-2">
-              <Filter className="w-4 h-4" />
-              {t('common.filter')}
-            </Button>
+            <div className="flex gap-2">
+              <Select defaultValue="all">
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('common.all')}</SelectItem>
+                  <SelectItem value="confirmed">{t('booking.confirmed')}</SelectItem>
+                  <SelectItem value="pending">{t('common.pending')}</SelectItem>
+                  <SelectItem value="cancelled">{t('common.cancelled')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" className="gap-2">
+                <Filter className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('common.filter')}</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
 
       {/* Bookings Table */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           <div className="space-y-3">
             {filteredBookings.map((booking) => (
               <div
                 key={booking.id}
-                className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                className="border border-gray-200 rounded-lg p-3 md:p-4 hover:border-blue-300 transition-colors"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm md:text-base">
                       {booking.routeFrom.charAt(0)}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-gray-900">{booking.routeFrom} to {booking.routeTo}</h4>
+                      <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-1">
+                        <h4 className="font-semibold text-gray-900 text-sm md:text-base">{booking.routeFrom} <span className="text-gray-400">to</span> {booking.routeTo}</h4>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-1">
                         <Badge variant="outline" className="text-xs">
                           {booking.id}
                         </Badge>
-                        <Badge variant="outline" className={getStatusColor(booking.status)}>
+                        <Badge variant="outline" className={`text-xs ${getStatusColor(booking.status)}`}>
                           {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Mail className="w-3 h-3" />
-                          {booking.operator}
-                        </div>
+                      <div className="flex items-center gap-1 text-xs md:text-sm text-gray-600">
+                        <Mail className="w-3 h-3" />
+                        <span>{booking.operator}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900 text-lg">{booking.price}</p>
+                  <div className="text-left sm:text-right ml-11 sm:ml-0">
+                    <p className="font-bold text-gray-900 text-base md:text-lg">{booking.price}</p>
                     <Badge
                       variant="outline"
                       className={
@@ -242,15 +244,15 @@ export function Bookings() {
                     </Badge>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 pt-3 border-t border-gray-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-gray-100">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">{t('route.routeName')}</p>
-                    <div className="flex items-center gap-1 text-sm">
-                      <MapPin className="w-3 h-3 text-green-600" />
-                      <span className="font-medium">{booking.routeFrom}</span>
+                    <div className="flex items-center gap-1 text-xs md:text-sm">
+                      <MapPin className="w-3 h-3 text-green-600 shrink-0" />
+                      <span className="font-medium truncate">{booking.routeFrom}</span>
                       <span className="text-gray-400">→</span>
-                      <MapPin className="w-3 h-3 text-red-600" />
-                      <span className="font-medium">{booking.routeTo}</span>
+                      <MapPin className="w-3 h-3 text-red-600 shrink-0" />
+                      <span className="font-medium truncate">{booking.routeTo}</span>
                     </div>
                   </div>
                   <div>

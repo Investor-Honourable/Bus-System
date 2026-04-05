@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Search, Filter, Calendar, MapPin, Users, DollarSign, Phone, Mail, X, AlertCircle } from "lucide-react";
+import { useTranslation } from "../../i18n/LanguageContext.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Input } from "../../components/ui/input.jsx";
 import { Button } from "../../components/ui/button.jsx";
@@ -23,6 +24,7 @@ import { Label } from "../../components/ui/label.jsx";
 import { toast } from "sonner";
 
 export function Bookings() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -133,8 +135,8 @@ export function Bookings() {
       <div className="p-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-            <p className="text-gray-600 mt-1">View and manage all your bus reservations</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('passenger.myBookings')}</h1>
+            <p className="text-gray-600 mt-1">{t('passenger.bookingHistory')}</p>
           </div>
         </div>
         <div className="flex items-center justify-center h-64">
@@ -149,12 +151,12 @@ export function Bookings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-          <p className="text-gray-600 mt-1">View and manage all your bus reservations</p>
+<h1 className="text-3xl font-bold text-gray-900">{t('passenger.myBookings')}</h1>
+            <p className="text-gray-600 mt-1">{t('passenger.bookingHistory')}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Stats */}
+        {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
