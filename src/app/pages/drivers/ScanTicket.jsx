@@ -12,7 +12,7 @@ export default function ScanTicket() {
 
   const handleSearch = async () => {
     if (!ticketCode.trim()) {
-      setError("Please enter a ticket code");
+      setError("Please enter a ticket or booking code");
       return;
     }
 
@@ -23,7 +23,7 @@ export default function ScanTicket() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      // Search for booking by ticket code
+      // Search for ticket or booking by code
       const response = await fetch("/api/dashboards/drivers/verify_ticket.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -45,23 +45,25 @@ export default function ScanTicket() {
         // Transform API response to match component expectations
         const ticket = data.ticket;
         setSearchResult({
-          booking_ref: ticket.booking_ref,
-          ticket_ref: ticket.ticket_ref,
-          user_name: ticket.user_name,
-          user_email: ticket.user_email,
-          user_phone: ticket.user_phone,
+          booking_ref: ticket.booking_reference,
+          ticket_ref: ticket.ticket_code,
+          user_name: ticket.passenger_name || "N/A",
+          user_email: ticket.passenger_email || ticket.passenger_phone + "@example.com",
+          user_phone: ticket.passenger_phone || "N/A",
           origin: ticket.origin,
           destination: ticket.destination,
           departure_date: ticket.departure_date,
           departure_time: ticket.departure_time,
           bus_number: ticket.bus_number,
-          number_of_seats: ticket.number_of_seats,
+          number_of_seats: 1,
           seat_number: ticket.seat_number,
-          booking_status: ticket.booking_status,
-          ticket_status: ticket.ticket_status,
-          is_valid: ticket.is_valid,
-          trip_status: ticket.trip_status,
-          validation_message: ticket.validation_message
+          booking_status: ticket.booking_status || "confirmed",
+          ticket_status: ticket.status,
+          is_valid: ticket.status === "valid",
+          trip_status: ticket.status === "valid" ? "confirmed" : "cancelled",
+          validation_message: ticket.status === "valid" 
+            ? "This ticket is valid for the trip" 
+            : "Ticket is " + ticket.status
         });
       } else {
         setError(data.message || "Ticket not found. Please check the code and try again.");

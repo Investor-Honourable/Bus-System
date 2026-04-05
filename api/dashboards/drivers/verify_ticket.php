@@ -41,7 +41,7 @@ if (!$ticket_code && $booking_ref) {
 }
 
 try {
-    // Get ticket details
+    // Check if it's a ticket code OR booking reference
     $sql = "SELECT tk.*, b.booking_reference, b.passenger_name, b.passenger_phone,
             t.departure_date, t.departure_time, t.arrival_time,
             r.origin, r.destination, r.route_code,
@@ -53,16 +53,16 @@ try {
             JOIN routes r ON t.route_id = r.id
             JOIN buses bus ON t.bus_id = bus.id
             LEFT JOIN drivers d ON t.driver_id = d.id
-            WHERE tk.ticket_code = ?";
+            WHERE tk.ticket_code = ? OR b.booking_reference = ?";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $ticket_code);
+    $stmt->bind_param("ss", $ticket_code, $ticket_code);
     $stmt->execute();
     $result = $stmt->get_result();
     $ticket = $result->fetch_assoc();
     
     if (!$ticket) {
-        echo json_encode(['status' => 'error', 'message' => 'Ticket not found']);
+        echo json_encode(['status' => 'error', 'message' => 'Ticket/Booking not found. Please check the code and try again.']);
         exit;
     }
     

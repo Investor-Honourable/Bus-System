@@ -67,6 +67,19 @@ if ($method === 'POST') {
             $stmt->bind_param("si", $status, $booking_id);
             
             if ($stmt->execute()) {
+                // Notify passenger
+                $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id) VALUES (?, 'Booking Status Update', CONCAT('Your booking status has been updated to \"', ?, '\".'), 'booking', 'booking', ?)");
+                $user_stmt = $conn->prepare("SELECT user_id FROM bookings WHERE id = ?");
+                $user_stmt->bind_param("i", $booking_id);
+                $user_stmt->execute();
+                $user_result = $user_stmt->get_result();
+                $booking_user = $user_result->fetch_assoc();
+                
+                if ($booking_user) {
+                    $notif_stmt->bind_param("isi", $booking_user['user_id'], $status, $booking_id);
+                    $notif_stmt->execute();
+                }
+                
                 echo json_encode(['status' => 'success', 'message' => 'Booking status updated']);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Failed to update booking status']);

@@ -14,6 +14,7 @@ import { Settings } from "./pages/passengers/Settings.jsx";
 import { Discover } from "./pages/Discover.jsx";
 import { Tickets } from "./pages/passengers/Tickets.jsx";
 import { History } from "./pages/passengers/History.jsx";
+import PassengerNotifications from "./pages/passengers/Notifications.jsx"; // ✅ Added missing import
 import { AdminDashboard } from "./pages/admin/Dashboard.jsx";
 import { EnhancedDashboard } from "./pages/admin/EnhancedDashboard.jsx";
 import { Users } from "./pages/admin/Users.jsx";
@@ -89,8 +90,10 @@ export const router = createBrowserRouter([
           { path: "discover", element: <Discover /> },
           { path: "tickets", element: <Tickets /> },
           { path: "history", element: <History /> },
+          { path: "notifications", element: <PassengerNotifications /> }, // ✅ Fixed
         ],
       },
+
       // Admin dashboard
       {
         path: "admin",

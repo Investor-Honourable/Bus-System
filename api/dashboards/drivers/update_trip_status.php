@@ -72,7 +72,21 @@ try {
             }
         }
         
-        echo json_encode(['status' => 'success', 'message' => 'Trip status updated successfully']);
+            // Notify passengers on this trip
+            $passengers_stmt = $conn->prepare("SELECT DISTINCT u.id as user_id FROM bookings b JOIN users u ON b.user_id = u.id WHERE b.trip_id = ? AND b.booking_status != 'cancelled'");
+            $passengers_stmt->bind_param("i", $trip_id);
+            $passengers_stmt->execute();
+            $passengers_result = $passengers_stmt->get_result();
+            
+            while ($passenger = $passengers_result->fetch_assoc()) {
+                $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id) VALUES (?, ?, ?, 'trip', 'trip_status', ?)");
+                $title = "Trip Status Update";
+                $message = "Your trip status has been updated to '$status'.";
+                $notif_stmt->bind_param("issi", $passenger['user_id'], $title, $message, $trip_id);
+                $notif_stmt->execute();
+            }
+            
+            echo json_encode(['status' => 'success', 'message' => 'Trip status updated successfully']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Failed to update trip status']);
     }

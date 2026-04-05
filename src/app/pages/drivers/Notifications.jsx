@@ -17,10 +17,9 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      const response = await fetch("/api/notifications.php?action=list", {
+      const response = await fetch(`/api/notifications.php?action=list&user_id=${user.id}`, {
         method: "GET",
         headers: { 
-          "User-ID": user.id,
           "Content-Type": "application/json" 
         }
       });
@@ -68,13 +67,13 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      await fetch("/api/notifications.php?action=mark_read", {
+      await fetch("/api/notifications.php", {
         method: "PUT",
         headers: { 
-          "User-ID": user.id,
           "Content-Type": "application/json" 
         },
         body: JSON.stringify({ 
+          action: "mark_read",
           notification_id: id,
           user_id: user.id
         })
@@ -92,13 +91,12 @@ export default function DriverNotifications() {
     try {
       const user = JSON.parse(localStorage.getItem("busfare_current_user") || "{}");
       
-      await fetch("/api/notifications.php?action=mark_all_read", {
+      await fetch("/api/notifications.php", {
         method: "PUT",
         headers: { 
-          "User-ID": user.id,
           "Content-Type": "application/json" 
         },
-        body: JSON.stringify({ user_id: user.id })
+        body: JSON.stringify({ action: "mark_all_read", user_id: user.id })
       });
       
       setNotifications(notifications.map(n => ({ ...n, is_read: true })));

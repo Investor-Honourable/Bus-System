@@ -18,6 +18,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+function sendNotificationEmail($conn, $user_id, $title, $message) {
+    $user_stmt = $conn->prepare("SELECT u.email, u.name, COALESCE(us.email_notifications, 1) as email_notifications_enabled 
+                               FROM users u 
+                               LEFT JOIN user_settings us ON u.id = us.user_id 
+                               WHERE u.id = ?");
+    $user_stmt->bind_param("i", $user_id);
+    $user_stmt->execute();
+    $user_result = $user_stmt->get_result();
+    $user = $user_result->fetch_assoc();
+    
+    if (!$user || empty($user['email']) || !$user['email_notifications_enabled']) {
+        return false;
+    }
+    
+    $to = $user['email'];
+    $user_name = $user['name'];
+    $subject = "CamTransit Notification: $title";
+    $headers = "From: noreply@camtransit.com\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    
+    $email_body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .footer { padding: 10px; text-align: center; font-size: 12px; color: #666; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h2>CamTransit</h2>
+            </div>
+            <div class='content'>
+                <h3>$title</h3>
+                <p>Hello $user_name,</p>
+                <p>$message</p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated notification from CamTransit.</p>
+                <p><a href='https://camtransit.com'>Visit CamTransit</a></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+    
+    return mail($to, $subject, $email_body, $headers);
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // GET - Get notifications
@@ -70,6 +123,7 @@ if ($method === 'POST') {
         $type = $data['type'] ?? 'system';
         $reference_type = $data['reference_type'] ?? null;
         $reference_id = $data['reference_id'] ?? null;
+        $send_email = $data['send_email'] ?? false;
         
         if (!$user_id || !$title || !$message) {
             echo json_encode(['status' => 'error', 'message' => 'User ID, title, and message are required']);
@@ -83,7 +137,17 @@ if ($method === 'POST') {
             $stmt->bind_param("isssii", $user_id, $title, $message, $type, $refType, $refId);
             
             if ($stmt->execute()) {
-                echo json_encode(['status' => 'success', 'message' => 'Notification created', 'id' => $conn->insert_id]);
+                $notification_id = $conn->insert_id;
+                $email_sent = false;
+                if ($send_email) {
+                    $email_sent = sendNotificationEmail($conn, $user_id, $title, $message);
+                }
+                echo json_encode([
+                    'status' => 'success', 
+                    'message' => 'Notification created', 
+                    'id' => $notification_id,
+                    'email_sent' => $email_sent
+                ]);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Failed to create notification']);
             }

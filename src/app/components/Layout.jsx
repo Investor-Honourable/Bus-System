@@ -14,9 +14,7 @@ import {
   Bus,
   LogOut,
   Shield,
-  Menu,
-  X,
-  Globe
+  Menu
 } from "lucide-react";
 import { Button } from "./ui/button.jsx";
 import { Input } from "./ui/input.jsx";
@@ -46,109 +44,92 @@ export function Layout() {
   const { t, language, changeLanguage, languages: availableLanguages, currentLanguage } = useTranslation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
-  const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  // Real notifications state
+  const isMobile = useIsMobile();
+
+  // Notifications
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(true);
 
-  // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     if (!currentUser?.id) return;
-    
     try {
-      const response = await fetch("/api/notifications.php?action=list", {
-        headers: { 'User-ID': currentUser.id }
+      const res = await fetch(`/api/notifications.php?action=list&user_id=${currentUser.id}`, {
+        headers: { 
+          "Content-Type": "application/json" 
+        },
       });
-      const data = await response.json();
-      
-      if (data.status === 'success') {
+      const data = await res.json();
+      console.log('Notification API response:', data);
+      if (data.status === "success") {
         setNotifications(data.notifications || []);
         setUnreadCount(data.unread_count || 0);
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
     } finally {
       setIsLoadingNotifs(false);
     }
   }, [currentUser?.id]);
 
-  // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await fetch("/api/notifications.php?action=mark_read", {
-        method: 'PUT',
-        headers: { 
-          'User-ID': currentUser.id,
-          'Content-Type': 'application/json'
+      await fetch(`/api/notifications.php`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: notificationId })
+        body: JSON.stringify({ action: "mark_read", notification_id: notificationId, user_id: currentUser.id }),
       });
-      
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
     }
   };
 
-  // Mark all as read
   const markAllAsRead = async () => {
     try {
-      await fetch("/api/notifications.php?action=mark_all_read", {
-        method: 'PUT',
-        headers: { 
-          'User-ID': currentUser.id,
-          'Content-Type': 'application/json'
+      await fetch(`/api/notifications.php`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ user_id: currentUser.id })
+        body: JSON.stringify({ action: "mark_all_read", user_id: currentUser.id }),
       });
-      
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all as read:', error);
+    } catch (err) {
+      console.error("Error marking all as read:", err);
     }
   };
 
   useEffect(() => {
     const userStr = localStorage.getItem("busfare_current_user");
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      setCurrentUser(user);
-    }
-    
-    // Listen for profile updates from Settings page
+    if (userStr) setCurrentUser(JSON.parse(userStr));
+
     const handleProfileUpdate = () => {
       const userStr = localStorage.getItem("busfare_current_user");
-      if (userStr) {
-        setCurrentUser(JSON.parse(userStr));
-      }
+      if (userStr) setCurrentUser(JSON.parse(userStr));
     };
-    
-    // Listen for notification refresh events from other pages
-    const handleNotificationRefresh = () => {
-      fetchNotifications();
-    };
-    
-    window.addEventListener('user-profile-updated', handleProfileUpdate);
-    window.addEventListener('refresh-notifications', handleNotificationRefresh);
-    return () => {
-      window.removeEventListener('user-profile-updated', handleProfileUpdate);
-      window.removeEventListener('refresh-notifications', handleNotificationRefresh);
-    };
-  }, []);
 
-  // Fetch notifications when user changes
+    const handleNotificationRefresh = () => fetchNotifications();
+
+    window.addEventListener("user-profile-updated", handleProfileUpdate);
+    window.addEventListener("refresh-notifications", handleNotificationRefresh);
+
+    return () => {
+      window.removeEventListener("user-profile-updated", handleProfileUpdate);
+      window.removeEventListener("refresh-notifications", handleNotificationRefresh);
+    };
+  }, [fetchNotifications]);
+
   useEffect(() => {
     if (currentUser?.id) {
       fetchNotifications();
-      
-      // Poll every 30 seconds for real-time updates
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     }
@@ -161,36 +142,24 @@ export function Layout() {
   };
 
   const navItems = [
-    { to: "/dashboard", icon: LayoutDashboard, label: t('nav.home'), end: true },
-    { to: "/dashboard/discover", icon: Compass, label: t('nav.discover'), end: false },
-    { to: "/dashboard/tickets", icon: Ticket, label: t('nav.tickets'), end: false },
-    { to: "/dashboard/bookings", icon: BookOpen, label: t('nav.bookings'), end: false },
-    { to: "/dashboard/history", icon: History, label: t('nav.history'), end: false },
+    { to: "/dashboard", icon: LayoutDashboard, label: t("nav.home"), end: true },
+    { to: "/dashboard/discover", icon: Compass, label: t("nav.discover"), end: false },
+    { to: "/dashboard/tickets", icon: Ticket, label: t("nav.tickets"), end: false },
+    { to: "/dashboard/bookings", icon: BookOpen, label: t("nav.bookings"), end: false },
+    { to: "/dashboard/history", icon: History, label: t("nav.history"), end: false },
+    { to: "/dashboard/notifications", icon: Bell, label: t("nav.notifications"), end: false },
   ];
 
-  // Add admin link if user is admin
-  if (currentUser?.role === "admin") {
-    navItems.push({ to: "/dashboard/admin", icon: Shield, label: t('nav.admin'), end: false });
-  }
+  if (currentUser?.role === "admin") navItems.push({ to: "/dashboard/admin", icon: Shield, label: t("nav.admin"), end: false });
+  if (currentUser?.role === "driver") navItems.push({ to: "/dashboard/driver", icon: Bus, label: t("nav.driver"), end: false });
 
-  // Add driver link if user is driver
-  if (currentUser?.role === "driver") {
-    navItems.push({ to: "/dashboard/driver", icon: Bus, label: t('nav.driver'), end: false });
-  }
-
-  // Mobile sidebar content
   const SidebarContent = ({ onItemClick }) => (
     <div className="flex flex-col h-full">
       <div className="p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-6 sm:mb-8">
-          <img 
-            src="/src/assets/CamTransit.png" 
-            alt="CamTransit Logo" 
-            className="w-8 h-8 object-contain"
-          />
-          <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
+          <img src="/src/assets/CamTransit.png" alt="CamTransit Logo" className="w-8 h-8 object-contain" />
+          <span className="text-xl font-bold text-gray-900">{t("common.appName")}</span>
         </div>
-        
         <nav className="space-y-1">
           {navItems.map((item) => (
             <NavLink
@@ -200,9 +169,7 @@ export function Layout() {
               onClick={onItemClick}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 sm:py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 hover:bg-gray-100"
+                  isActive ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"
                 }`
               }
             >
@@ -211,40 +178,6 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-      </div>
-
-      {/* Upgrade Card - hidden on mobile */}
-      <div className="hidden sm:block mx-4 mt-auto mb-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-4 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
-          <div className="relative">
-            <Bus className="w-12 h-12 mb-3 opacity-90" />
-            <p className="text-sm font-medium mb-1">{t('nav.visitingNewRides')}</p>
-            <p className="text-xs opacity-90 mb-3">{t('nav.premium')}</p>
-            <Button size="sm" className="w-full bg-white text-blue-600 hover:bg-gray-100">
-              {t('nav.upgradeNow')}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Links */}
-      <div className="border-t border-gray-200 p-3 sm:p-4 space-y-1 mt-auto">
-        <button 
-          onClick={() => { navigate("/help-support"); onItemClick(); }}
-          className="flex items-center gap-3 px-4 py-2 sm:py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg w-full transition-colors"
-        >
-          <HelpCircle className="w-5 h-5" />
-          <span className="text-sm font-medium">{t('nav.help')}</span>
-        </button>
-        <button 
-          onClick={() => { navigate("/dashboard/settings"); onItemClick(); }}
-          className="flex items-center gap-3 px-4 py-2 sm:py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg w-full transition-colors"
-        >
-          <Settings className="w-5 h-5" />
-          <span className="text-sm font-medium">{t('nav.settings')}</span>
-        </button>
       </div>
     </div>
   );
@@ -261,12 +194,8 @@ export function Layout() {
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="border-b p-4">
             <SheetTitle className="flex items-center gap-2">
-              <img 
-                src="/src/assets/CamTransit.png" 
-                alt="CamTransit Logo" 
-                className="w-8 h-8 object-contain"
-              />
-              <span className="text-xl font-bold">{t('common.appName')}</span>
+              <img src="/src/assets/CamTransit.png" alt="CamTransit Logo" className="w-8 h-8 object-contain" />
+              <span className="text-xl font-bold">{t("common.appName")}</span>
             </SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100%-60px)]">
@@ -277,152 +206,101 @@ export function Layout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-3 sm:py-4">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            {/* Mobile menu button */}
-            <button 
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-            >
-              <Menu className="w-5 h-5 text-gray-600" />
-            </button>
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex items-center justify-between">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 hover:bg-gray-100 rounded-lg flex items-center justify-center"
+          >
+            <Menu className="w-5 h-5 text-gray-600" />
+          </button>
 
-            {/* Search bar - visible on all screens */}
-            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-xl mx-1 sm:mx-2 md:mx-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                <Input 
-                  placeholder={t('nav.search')}
-                  className="pl-8 sm:pl-10 bg-gray-50 border-gray-200 text-xs sm:text-sm h-8 sm:h-9 md:h-10"
-                />
-              </div>
+          {/* Search */}
+          <div className="flex-1 max-w-xl mx-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input placeholder={t("nav.search")} className="pl-8 bg-gray-50 border-gray-200 w-full" />
             </div>
+          </div>
 
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
-              {/* Add funds button - hidden on mobile */}
-              <Button className="hidden md:flex gap-2 bg-blue-600 hover:bg-blue-700 h-8 md:h-9 lg:h-10 text-xs md:text-sm">
-                <Plus className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden lg:inline">+ 500pr</span>
-              </Button>
-              
-              {/* Mobile add button */}
-              <button className="md:hidden p-1.5 sm:p-2 bg-blue-600 text-white rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg relative touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
-                    <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
-                    {unreadCount > 0 && (
-                      <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full text-white text-[10px] sm:text-xs flex items-center justify-center">{unreadCount}</span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="end">
-                  <div className="p-4 border-b">
-                    <h3 className="font-semibold">{t('nav.notifications')}</h3>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {isLoadingNotifs ? (
-                      <div className="p-4 text-center text-gray-500">{t('common.loading')}</div>
-                    ) : notifications.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">{t('messages.noResults')}</div>
-                    ) : (
-                      notifications.map((notification) => (
-                        <div 
-                          key={notification.id} 
-                          className={`p-3 border-b hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''}`}
-                          onClick={() => markAsRead(notification.id)}
-                        >
-                          <div className="flex justify-between items-start">
-                            <p className="font-medium text-sm">{notification.title}</p>
-                            <span className="text-xs text-gray-500">{notification.created_at}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+          {/* Right buttons */}
+          <div className="flex items-center gap-2">
+            {/* Notifications */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="relative p-2 hover:bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-4 border-b font-semibold">{t("nav.notifications")}</div>
+                <div className="max-h-80 overflow-y-auto">
+                  {isLoadingNotifs ? (
+                    <div className="p-4 text-center text-gray-500">{t("common.loading")}</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">{t("messages.noResults")}</div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-3 border-b hover:bg-gray-50 cursor-pointer ${!notif.is_read ? "bg-blue-50" : ""}`}
+                        onClick={() => markAsRead(notif.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="font-medium text-sm">{notif.title}</p>
+                          <span className="text-xs text-gray-500">{notif.created_at}</span>
                         </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="p-2 border-t">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full text-sm"
-                      onClick={markAllAsRead}
-                      disabled={unreadCount === 0}
-                    >
-                      {t('nav.markAllAsRead')}
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                        <p className="text-sm text-gray-600 mt-1">{notif.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-2 border-t">
+                  <Button variant="ghost" className="w-full text-sm" onClick={markAllAsRead} disabled={unreadCount === 0}>
+                    {t("nav.markAllAsRead")}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-              {/* Language Selector */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center">
-                    <span className="text-lg">{currentLanguage.flag}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">
-                    {t('settings.languagePreference')}
+            {/* Add funds */}
+            <Button className="hidden md:flex gap-2 bg-blue-600 hover:bg-blue-700 h-8 text-xs md:text-sm">
+              <Plus className="w-4 h-4" />
+              <span className="hidden lg:inline">+ 500pr</span>
+            </Button>
+
+            {/* User Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 hover:bg-gray-50 rounded-lg px-2 py-1">
+                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    {currentUser?.name?.charAt(0).toUpperCase() || "U"}
                   </div>
-                  <DropdownMenuSeparator />
-                  {availableLanguages.map((lang) => (
-                    <DropdownMenuItem 
-                      key={lang.code}
-                      onClick={() => changeLanguage(lang.code)}
-                      className={`flex items-center gap-2 ${language === lang.code ? 'bg-blue-50' : ''}`}
-                    >
-                      <span className="text-lg">{lang.flag}</span>
-                      <span>{lang.nativeName}</span>
-                      {language === lang.code && (
-                        <span className="ml-auto text-blue-600">✓</span>
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              {/* User dropdown */}
-              <div className="border-l border-gray-200 pl-2 sm:pl-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 sm:gap-3 hover:bg-gray-50 rounded-lg px-1 py-1 transition-colors touch-manipulation">
-                      <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                        {currentUser?.name?.charAt(0).toUpperCase() || "U"}
-                      </div>
-                      <div className="hidden sm:block text-sm text-left">
-                        <p className="font-semibold text-gray-900">{currentUser?.name || "User"}</p>
-                        <p className="text-xs text-gray-500">{currentUser?.email || ""}</p>
-                      </div>
-                      <ChevronDown className="hidden sm:block w-4 h-4 text-gray-400" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => navigate("/dashboard/settings")}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      Account Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/help-support")}>
-                      <HelpCircle className="w-4 h-4 mr-2" />
-                      Help & Support
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => navigate("/dashboard/settings")}>
+                  <Settings className="w-4 h-4 mr-2" /> Account Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/help-support")}>
+                  <HelpCircle className="w-4 h-4 mr-2" /> Help & Support
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="w-4 h-4 mr-2" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>

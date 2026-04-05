@@ -45,8 +45,8 @@ export function DriverLayout() {
     if (!currentUser?.id) return;
     
     try {
-      const response = await fetch("/api/notifications.php?action=list", {
-        headers: { 'User-ID': currentUser.id }
+      const response = await fetch(`/api/notifications.php?action=list&user_id=${currentUser.id}`, {
+        headers: { 'Content-Type': 'application/json' }
       });
       const data = await response.json();
       
@@ -64,13 +64,12 @@ export function DriverLayout() {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await fetch("/api/notifications.php?action=mark_read", {
+      await fetch("/api/notifications.php", {
         method: 'PUT',
         headers: { 
-          'User-ID': currentUser.id,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ notification_id: notificationId, user_id: currentUser.id })
+        body: JSON.stringify({ action: "mark_read", notification_id: notificationId, user_id: currentUser.id })
       });
       
       setNotifications(prev => 

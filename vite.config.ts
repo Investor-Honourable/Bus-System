@@ -23,9 +23,10 @@ export default defineConfig({
     host: true, // Allow access from other devices on the network
     proxy: {
       '/api': {
-        target: 'http://localhost:80',
+        target: 'http://localhost',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/Bus_system/api'),
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/Bus_system/api')
       },
     },
   },

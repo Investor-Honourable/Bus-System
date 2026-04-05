@@ -1,11 +1,11 @@
-# Database Setup Progress
-
-✅ Created `api/full_database_setup.sql` - COMPLETE schema for all tables (users, drivers, passengers, buses, routes, trips, bookings, tickets, driver_trip_assignments, notifications, etc.) with samples.
-
-**Next Steps:**
-1. Open phpMyAdmin: http://localhost/phpmyadmin/index.php?route=/database/structure&db=bus_system
-2. Import `api/full_database_setup.sql` (or run all queries)
-3. Test: Visit `http://localhost/Bus_system/api/dashboards/admin/buses.php` etc.
-4. Optional: Run `api/setup_sample_data.php` for more data.
-
-All necessary tables created. Backend ready!
+# Notifications Full Functionality Fix
+- [x] 1. Create TODO.md ✓
+- [x] 2. Add triggers to assign_driver.php ✓
+- [x] 3. Add triggers to update_trip_status.php ✓
+- [x] 4. Add triggers to bookings.php ✓
+- [x] 5. Create passenger notifications.php ✓
+- [x] 6. Create src/app/pages/passengers/Notifications.jsx ✓
+- [x] 7. Add email dispatch to notifications.php
+- [x] 8. Add passenger routes & layout integration
+- [x] 9. Fix API calls for all roles (Admin/Driver/Passenger)
+- [x] 10. Test & complete

@@ -59,8 +59,8 @@ export function AdminLayout() {
     if (!currentUser?.id) return;
     
     try {
-      const response = await fetch("/api/notifications.php?action=list", {
-        headers: { 'User-ID': currentUser.id }
+      const response = await fetch(`/api/notifications.php?action=list&user_id=${currentUser.id}`, {
+        headers: { 'Content-Type': 'application/json' }
       });
       const data = await response.json();
       
@@ -78,13 +78,12 @@ export function AdminLayout() {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      await fetch("/api/notifications.php?action=mark_read", {
+      await fetch("/api/notifications.php", {
         method: 'PUT',
         headers: { 
-          'User-ID': currentUser.id,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ notification_id: notificationId, user_id: currentUser.id })
+        body: JSON.stringify({ action: "mark_read", notification_id: notificationId, user_id: currentUser.id })
       });
       
       setNotifications(prev => 
@@ -99,13 +98,12 @@ export function AdminLayout() {
   // Mark all as read
   const markAllAsRead = async () => {
     try {
-      await fetch("/api/notifications.php?action=mark_all_read", {
+      await fetch("/api/notifications.php", {
         method: 'PUT',
         headers: { 
-          'User-ID': currentUser.id,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ user_id: currentUser.id })
+        body: JSON.stringify({ action: "mark_all_read", user_id: currentUser.id })
       });
       
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
